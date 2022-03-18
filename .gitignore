@@ -6,3 +6,4 @@ target
 node_modules
 .idea
 yarn.lock
+Cargo.lock
