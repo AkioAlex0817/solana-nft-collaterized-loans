@@ -1,16 +1,15 @@
-use anchor_lang::accounts::loader::Loader;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Token, Mint};
 use anchor_lang::solana_program::{sysvar, clock, program_option::COption};
 
-declare_id!("3oEZnfXGAbKbkx9rw51WpyhGPCqU9jutfYsWDyfwttEp");
+declare_id!("255yi18db8EQa9DgWQ8xmiVxBhE37ViN75ie2m64p4Wg");
 
 #[program]
 pub mod solana_nft_collaterized_loans {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, nonce: u8) -> Result<()> {
-        let mut nft_collaterized_loans = ctx.accounts.nft_collaterized_loans.load_init()?;
+        let nft_collaterized_loans = &mut ctx.accounts.cloans;
         nft_collaterized_loans.stablecoin_mint = ctx.accounts.stablecoin_mint.key();
         nft_collaterized_loans.stablecoin_vault = ctx.accounts.stablecoin_vault.key();
         nft_collaterized_loans.order_id = 0;
@@ -20,8 +19,8 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
-    /*pub fn create_order(ctx: Context<CreateOrder>, nonce: u8, request_amount: u64, interest: u64, period: u64, additional_collateral: u64) -> Result<()> {
-        if request_amount == 0 {
+    pub fn create_order(ctx: Context<CreateOrder>, nonce: u8, request_amount: u64, interest: u64, period: u64, additional_collateral: u64) -> Result<()> {
+        /*if request_amount == 0 {
             return Err(ErrorCode::AmountMustBeGreaterThanZero.into());
         }
 
@@ -75,12 +74,12 @@ pub mod solana_nft_collaterized_loans {
 
         nft_collaterized_loans.order_id += 1;
 
-        order.order_status = true;
+        order.order_status = true;*/
 
         Ok(())
     }
 
-    pub fn cancel_order(ctx: Context<CancelOrder>, order_id: u64) -> Result<()> {
+    /*pub fn cancel_order(ctx: Context<CancelOrder>, order_id: u64) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let nft_collaterized_loans = &mut ctx.accounts.nft_collaterized_loans;
 
@@ -289,36 +288,35 @@ pub mod solana_nft_collaterized_loans {
 #[derive(Accounts)]
 #[instruction(nonce: u8)]
 pub struct Initialize<'info> {
-    #[account(
-    zero
-    )]
-    pub nft_collaterized_loans: Loader<'info, NFTCollaterizedLoans>,
+    #[account(zero)]
+    pub cloans: Box<Account<'info, Cloans>>,
 
-    pub stablecoin_mint: Account<'info, Mint>,
+    pub stablecoin_mint: Box<Account<'info, Mint>>,
     #[account(
     constraint = stablecoin_vault.mint == stablecoin_mint.key(),
     constraint = stablecoin_vault.owner == signer.key(),
     )]
-    pub stablecoin_vault: Account<'info, TokenAccount>,
+    pub stablecoin_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
     seeds = [
-    nft_collaterized_loans.to_account_info().key.as_ref()
+    cloans.to_account_info().key.as_ref()
     ],
     bump = nonce,
     )]
-    /// CHECK: This is not dangerous because we don't read or write from this account
+    /// CHECK: Test
     pub signer: UncheckedAccount<'info>,
 }
 
-/*#[derive(Accounts)]
+#[derive(Accounts)]
 pub struct CreateOrder<'info> {
-    #[account(
+    /*#[account(
     mut,
     has_one = stablecoin_vault,
     has_one = stablecoin_mint
-    )]
-    pub nft_collaterized_loans: Box<Account<'info, NFTCollaterizedLoans>>,
+    )]*/
+    #[account(mut)]
+    pub cloans: Box<Account<'info, Cloans>>,
 
     pub stablecoin_mint: Box<Account<'info, Mint>>,
     #[account(
@@ -351,7 +349,7 @@ pub struct CreateOrder<'info> {
     )]
     pub user_nft_vault: Box<Account<'info, TokenAccount>>,
 
-    // Order.
+    /*// Order.
     #[account(
     init_if_needed,
     payer = borrower,
@@ -361,18 +359,18 @@ pub struct CreateOrder<'info> {
     ],
     bump
     )]
-    pub order: Box<Account<'info, Order>>,
+    pub order: Box<Account<'info, Order>>,*/
 
     #[account(mut)]
     pub borrower: Signer<'info>,
 
     #[account(
     seeds = [
-    nft_collaterized_loans.to_account_info().key.as_ref()
+    cloans.to_account_info().key.as_ref()
     ],
-    bump = nft_collaterized_loans.nonce,
+    bump = cloans.nonce,
     )]
-    /// CHECK: This is not dangerous because we don't read or write from this account
+    /// CHECK: Test
     pub signer: UncheckedAccount<'info>,
 
     // misc
@@ -380,7 +378,7 @@ pub struct CreateOrder<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-#[derive(Accounts)]
+/*#[derive(Accounts)]
 #[instruction(order_id: u64)]
 pub struct CancelOrder<'info> {
     #[account(
@@ -663,22 +661,19 @@ pub struct Liquidate<'info> {
     pub token_program: Program<'info, Token>,
 }*/
 
-#[account(zero_copy)]
-pub struct NFTCollaterizedLoans {
+#[account]
+pub struct Cloans {
     // Mint of the token
-    pub stablecoin_mint: Pubkey, //32
+    pub stablecoin_mint: Pubkey,
     // Vault holding the stablecoins -- mostly for holding the collateral stablecoins
-    pub stablecoin_vault: Pubkey, //32
+    pub stablecoin_vault: Pubkey,
     // latest order id
-    pub order_id: u64, // 8
+    pub order_id: u64,
     // total additional collateral
-    pub total_additional_collateral: u64, //8
-    // nonce
-    pub nonce: u8, //1
-}
+    pub total_additional_collateral: u64,
 
-impl NFTCollaterizedLoans {
-    const LEN: usize = 89;
+    // nonce
+    pub nonce: u8,
 }
 
 #[account]

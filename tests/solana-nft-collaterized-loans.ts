@@ -22,15 +22,16 @@ describe("solana-nft-collaterized-loans", () => {
     let nftMintPubKey: anchor.web3.PublicKey;
 
 
-    let alice: anchor.web3.PublicKey;
+    let alice: anchor.web3.Keypair;
     let aliceStableCoinWallet: anchor.web3.PublicKey;
     let aliceNftWallet: anchor.web3.PublicKey;
 
-    let bob: anchor.web3.PublicKey;
+    let bob: anchor.web3.Keypair;
     let bobStableCoinWallet: anchor.web3.PublicKey;
     let bobNftWallet: anchor.web3.PublicKey;
 
-    let nftCollaterizedLoans: anchor.web3.Keypair = anchor.web3.Keypair.generate();
+    let nftCollaterizedLoansKeyPair: anchor.web3.Keypair = anchor.web3.Keypair.generate();
+    let orderKeyPair: anchor.web3.Keypair = anchor.web3.Keypair.generate();
 
     it('Prepare', async () => {
         // Create StableCoin
@@ -43,18 +44,18 @@ describe("solana-nft-collaterized-loans", () => {
         // Load Alice
         let alicePairFile = fs.readFileSync('/home/alex/blockchain/solana-nft-collaterized-loans/tests/keys/alice.json', "utf-8");
         let alicePairData = JSON.parse(alicePairFile);
-        alice = anchor.web3.Keypair.fromSecretKey(new Uint8Array(alicePairData)).publicKey;
-        console.log("Alice: ", alice.toString());
+        alice = anchor.web3.Keypair.fromSecretKey(new Uint8Array(alicePairData));
+        console.log("Alice: ", alice.publicKey.toString());
 
         // Load Bob
         let bobPairFile = fs.readFileSync('/home/alex/blockchain/solana-nft-collaterized-loans/tests/keys/bob.json', "utf-8");
         let bobPairData = JSON.parse(bobPairFile);
-        bob = anchor.web3.Keypair.fromSecretKey(new Uint8Array(bobPairData)).publicKey;
-        console.log("Bob: ", bob.toString());
+        bob = anchor.web3.Keypair.fromSecretKey(new Uint8Array(bobPairData));
+        console.log("Bob: ", bob.publicKey.toString());
 
         //create stable Token wallet for alice and bob
-        aliceStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(alice);
-        bobStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(bob);
+        aliceStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(alice.publicKey);
+        bobStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(bob.publicKey);
 
         assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 0);
         assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 0);
@@ -63,65 +64,73 @@ describe("solana-nft-collaterized-loans", () => {
         await utils.mintToAccount(provider, stableCoinMintPubKey, bobStableCoinWallet, 1000);
         assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1000);
 
+        //Airdrop StableCoin To Alice
+        await utils.mintToAccount(provider, stableCoinMintPubKey, aliceStableCoinWallet, 1000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000);
+
         // Create Nft Token
         let mintKeyNft = anchor.web3.Keypair.generate();
         let nftMintObject = await utils.createMint(mintKeyNft, provider, provider.wallet.publicKey, null, 0, TOKEN_PROGRAM_ID);
         nftMintPubKey = nftMintObject.publicKey;
 
         //Mint Nft Token to alice
-        aliceNftWallet = await nftMintObject.createAssociatedTokenAccount(alice);
+        aliceNftWallet = await nftMintObject.createAssociatedTokenAccount(alice.publicKey);
         await utils.mintToAccount(provider, nftMintPubKey, aliceNftWallet, 1);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
 
-        const [signer, signerBump] = await anchor.web3.PublicKey.findProgramAddress([nftCollaterizedLoans.publicKey.toBuffer()], program.programId);
-
+        const [signer, signerBump] = await anchor.web3.PublicKey.findProgramAddress([nftCollaterizedLoansKeyPair.publicKey.toBuffer()], program.programId);
         const stableCoinVault = await stableCoinMintObject.createAccount(signer);
         assert.strictEqual(await utils.getTokenBalance(provider, stableCoinVault), 0);
+
         console.log("Initialize Start!");
         await program.rpc.initialize(signerBump, {
             accounts: {
-                nftCollaterizedLoans: nftCollaterizedLoans.publicKey,
+                cloans: nftCollaterizedLoansKeyPair.publicKey,
                 stablecoinMint: stableCoinMintPubKey,
                 stablecoinVault: stableCoinVault,
                 signer: signer,
             },
             instructions: [
-                await program.account.nftCollaterizedLoans.createInstruction(nftCollaterizedLoans),
+                await program.account.cloans.createInstruction(nftCollaterizedLoansKeyPair),
             ],
-            signers: [nftCollaterizedLoans]
+            signers: [nftCollaterizedLoansKeyPair]
         });
         console.log("Initialize Success!");
+
+        //Fetch
+        const testValue1 = await program.account.cloans.fetch(nftCollaterizedLoansKeyPair.publicKey);
+        console.log(program.programId, testValue1);
+        /*// Create Order
+        const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress([orderKeyPair.publicKey.toBuffer()], program.programId);
+        const nftCoinVault = await nftMintObject.createAccount(signer);
+        assert.strictEqual(await utils.getTokenBalance(provider, nftCoinVault), 0);
+        console.log("Create Order Start!");
+        await program.rpc.createOrder(orderBump, new anchor.BN(100), new anchor.BN(10), new anchor.BN(10), new anchor.BN(10), {
+            accounts: {
+                nftCollaterizedLoans: nftCollaterizedLoansKeyPair.publicKey,
+                stablecoinMint: stableCoinMintPubKey,
+                stablecoinVault: stableCoinVault,
+                userStablecoinVault: aliceStableCoinWallet,
+                nftMint: nftMintPubKey,
+                nftVault: nftCoinVault,
+                userNftVault: aliceNftWallet,
+                //order: orderKeyPair.publicKey,
+                borrower: alice.publicKey,
+                signer: signer,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+            },
+            signers: [alice]
+        });
+        console.log("Create Order Success!");
+        assert.strictEqual(await utils.getTokenBalance(provider, nftCoinVault), 1);
+        assert.strictEqual(await utils.getTokenBalance(provider, nftCoinVault), 10);*/
         /*const testValue = await provider.connection.getAccountInfo(nftCollaterizedLoans.publicKey);
-        console.log(testValue.data);*/
+        console.log(testValue.data);
         const testValue1 = await program.account.nftCollaterizedLoans.fetch(nftCollaterizedLoans.publicKey);
-        console.log(testValue1);
-        //console.log("Fetch success", testValue.length.toString());
-        /*console.log(testValue.stablecoinVault.toString());
-        console.log(testValue.orderId.toString());
-        console.log(testValue.totalAdditionalCollateral.toString());
-        console.log(testValue.nonce.toString());*/
+        console.log(testValue1);*/
+
+
     });
 
-    // it("Initialized!", async () => {
-    //     // Create nftCollaterizedLoans
-    //     /*const nft = anchor.web3.Keypair.generate();
-    //
-    //
-    //     await program.rpc.initialize(vaultNonce, {
-    //         accounts: {
-    //             nftCollaterizedLoans: ,
-    //             stablecoinMint: stableCoinMintPubKey,
-    //             stablecoinVault: stableCoinVault,
-    //             signer: provider.wallet.publicKey,
-    //             systemProgram: anchor.web3.SystemProgram.programId,
-    //             tokenProgram: TOKEN_PROGRAM_ID,
-    //             rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-    //         }
-    //     });*/
-    // });
-    /*it("Is initialized!", async () => {
-        // Add your test here.
-        const tx = await program.rpc.initialize({});
-        console.log("Your transaction signature", tx);
-    });*/
 });
