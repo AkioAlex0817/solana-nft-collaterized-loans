@@ -20,7 +20,7 @@ pub mod solana_nft_collaterized_loans {
     }
 
     pub fn create_order(ctx: Context<CreateOrder>, nonce: u8, request_amount: u64, interest: u64, period: u64, additional_collateral: u64) -> Result<()> {
-        /*if request_amount == 0 {
+        if request_amount == 0 {
             return Err(ErrorCode::AmountMustBeGreaterThanZero.into());
         }
 
@@ -49,8 +49,7 @@ pub mod solana_nft_collaterized_loans {
             );
             token::transfer(cpi_ctx, additional_collateral)?;
         }
-
-        let clock = clock::Clock::get().unwrap();
+        /*let clock = clock::Clock::get().unwrap();
 
         // Save Info
         let order = &mut ctx.accounts.order;
@@ -67,14 +66,13 @@ pub mod solana_nft_collaterized_loans {
         order.loan_start_time = 0; // placeholder
         order.paid_back_at = 0;
         order.withdrew_at = 0;
-        order.nonce = nonce;
+        order.nonce = nonce;*/
 
-        let nft_collaterized_loans = &mut ctx.accounts.nft_collaterized_loans;
+        let nft_collaterized_loans = &mut ctx.accounts.cloans;
         nft_collaterized_loans.total_additional_collateral += additional_collateral;
-
         nft_collaterized_loans.order_id += 1;
 
-        order.order_status = true;*/
+        //order.order_status = true;
 
         Ok(())
     }
@@ -309,57 +307,61 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(nonce: u8)]
 pub struct CreateOrder<'info> {
-    /*#[account(
+    #[account(
     mut,
     has_one = stablecoin_vault,
     has_one = stablecoin_mint
-    )]*/
-    #[account(mut)]
+    )]
     pub cloans: Box<Account<'info, Cloans>>,
 
     pub stablecoin_mint: Box<Account<'info, Mint>>,
     #[account(
+    mut,
     constraint = stablecoin_vault.mint == stablecoin_mint.key(),
     constraint = stablecoin_vault.owner == signer.key(),
     )]
     pub stablecoin_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
+    mut,
     constraint = user_stablecoin_vault.mint == stablecoin_mint.key(),
     constraint = user_stablecoin_vault.owner == borrower.key(),
     )]
     pub user_stablecoin_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
-    mut,
     constraint = nft_mint.supply == 1,
     constraint = nft_mint.decimals == 0,
     )]
     pub nft_mint: Box<Account<'info, Mint>>,
+
     #[account(
+    mut,
     constraint = nft_vault.mint == nft_mint.key(),
     constraint = nft_vault.owner == signer.key(),
     )]
     pub nft_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
+    mut,
     constraint = user_nft_vault.mint == nft_mint.key(),
     constraint = user_nft_vault.owner == borrower.key(),
     )]
     pub user_nft_vault: Box<Account<'info, TokenAccount>>,
 
-    /*// Order.
+    // Order.
     #[account(
-    init_if_needed,
+    mut,
     payer = borrower,
     seeds = [
-    nft_collaterized_loans.order_id.to_string().as_ref(),
-    nft_collaterized_loans.to_account_info().key().as_ref()
+    cloans.order_id.to_string().as_ref(),
+    cloans.to_account_info().key().as_ref()
     ],
-    bump
+    bump = nonce,
     )]
-    pub order: Box<Account<'info, Order>>,*/
+    pub order: Box<Account<'info, Order>>,
 
     #[account(mut)]
     pub borrower: Signer<'info>,
