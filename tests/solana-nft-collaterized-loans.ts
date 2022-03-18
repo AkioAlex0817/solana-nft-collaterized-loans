@@ -108,9 +108,16 @@ describe("solana-nft-collaterized-loans", () => {
         const fetch1 = await program.account.cloans.fetch(nftCollaterizedLoansKeyPair.publicKey);
         console.log(fetch1.orderId);
         // Create Order
-        const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress([fetch1.orderId.toBuffer(), nftCollaterizedLoansKeyPair.publicKey.toBuffer()], program.programId);
+        const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(fetch1.orderId.toString()),
+                nftCollaterizedLoansKeyPair.publicKey.toBuffer()
+            ],
+            // [Buffer.from("breed")],
+            program.programId);
         const nftCoinVault = await nftMintObject.createAccount(signer);
         assert.strictEqual(await utils.getTokenBalance(provider, nftCoinVault), 0);
+        console.log('order', order.toString())
         console.log("Create Order Start!");
         await program.rpc.createOrder(orderBump, new anchor.BN(100), new anchor.BN(10), new anchor.BN(10), new anchor.BN(10), {
             accounts: {

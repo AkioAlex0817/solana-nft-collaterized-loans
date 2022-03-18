@@ -4,6 +4,8 @@ use anchor_lang::solana_program::{sysvar, clock, program_option::COption};
 
 declare_id!("255yi18db8EQa9DgWQ8xmiVxBhE37ViN75ie2m64p4Wg");
 
+const BREED_PDA_SEED: &[u8] = b"breed";
+
 #[program]
 pub mod solana_nft_collaterized_loans {
     use super::*;
@@ -19,7 +21,7 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
-    pub fn create_order(ctx: Context<CreateOrder>, nonce: u8, request_amount: u64, interest: u64, period: u64, additional_collateral: u64) -> Result<()> {
+    pub fn create_order(ctx: Context<CreateOrder>, _nonce: u8, request_amount: u64, interest: u64, period: u64, additional_collateral: u64) -> Result<()> {
         if request_amount == 0 {
             return Err(ErrorCode::AmountMustBeGreaterThanZero.into());
         }
@@ -49,7 +51,7 @@ pub mod solana_nft_collaterized_loans {
             );
             token::transfer(cpi_ctx, additional_collateral)?;
         }
-        /*let clock = clock::Clock::get().unwrap();
+        let clock = clock::Clock::get().unwrap();
 
         // Save Info
         let order = &mut ctx.accounts.order;
@@ -66,18 +68,18 @@ pub mod solana_nft_collaterized_loans {
         order.loan_start_time = 0; // placeholder
         order.paid_back_at = 0;
         order.withdrew_at = 0;
-        order.nonce = nonce;*/
+        order.nonce = _nonce;
 
         let nft_collaterized_loans = &mut ctx.accounts.cloans;
         nft_collaterized_loans.total_additional_collateral += additional_collateral;
         nft_collaterized_loans.order_id += 1;
 
-        //order.order_status = true;
+        order.order_status = true;
 
         Ok(())
     }
 
-    /*pub fn cancel_order(ctx: Context<CancelOrder>, order_id: u64) -> Result<()> {
+    pub fn cancel_order(ctx: Context<CancelOrder>, order_id: u64) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let nft_collaterized_loans = &mut ctx.accounts.nft_collaterized_loans;
 
@@ -127,7 +129,7 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
-    pub fn give_loan(ctx: Context<GiveLoan>, order_id: u64) -> Result<()> {
+    /*pub fn give_loan(ctx: Context<GiveLoan>, order_id: u64) -> Result<()> {
         let order = &mut ctx.accounts.order;
 
         if order.loan_start_time != 0 && order.order_status == false {
@@ -307,7 +309,7 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(nonce: u8)]
+#[instruction(_nonce: u8)]
 pub struct CreateOrder<'info> {
     #[account(
     mut,
@@ -350,16 +352,15 @@ pub struct CreateOrder<'info> {
     constraint = user_nft_vault.owner == borrower.key(),
     )]
     pub user_nft_vault: Box<Account<'info, TokenAccount>>,
-
     // Order.
     #[account(
-    mut,
+    init_if_needed,
     payer = borrower,
     seeds = [
     cloans.order_id.to_string().as_ref(),
     cloans.to_account_info().key().as_ref()
     ],
-    bump = nonce,
+    bump
     )]
     pub order: Box<Account<'info, Order>>,
 
@@ -380,7 +381,7 @@ pub struct CreateOrder<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-/*#[derive(Accounts)]
+#[derive(Accounts)]
 #[instruction(order_id: u64)]
 pub struct CancelOrder<'info> {
     #[account(
@@ -453,6 +454,7 @@ pub struct CancelOrder<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/*
 #[derive(Accounts)]
 #[instruction(order_id: u64)]
 pub struct GiveLoan<'info> {
