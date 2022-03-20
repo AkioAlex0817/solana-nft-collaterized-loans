@@ -3,11 +3,14 @@ seeds = false
 [programs.localnet]
 solana_nft_collaterized_loans = "255yi18db8EQa9DgWQ8xmiVxBhE37ViN75ie2m64p4Wg"
 
+[programs.devnet]
+solana_nft_collaterized_loans = "2BgeCAUB7cyShYRN8eeuHM6Ergh9B3xFXjuYTwHu4PPR"
+
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/root/.config/solana/id.json"
 
 [scripts]

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Token, Mint};
 use anchor_lang::solana_program::{ clock };
 
-declare_id!("255yi18db8EQa9DgWQ8xmiVxBhE37ViN75ie2m64p4Wg");
+declare_id!("2BgeCAUB7cyShYRN8eeuHM6Ergh9B3xFXjuYTwHu4PPR");
 
 #[program]
 pub mod solana_nft_collaterized_loans {
