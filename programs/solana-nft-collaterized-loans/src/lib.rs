@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Token, Mint};
 use anchor_lang::solana_program::{ clock };
 
-declare_id!("2BgeCAUB7cyShYRN8eeuHM6Ergh9B3xFXjuYTwHu4PPR");
+declare_id!("7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr");
 
 #[program]
 pub mod solana_nft_collaterized_loans {
@@ -240,9 +240,9 @@ pub mod solana_nft_collaterized_loans {
         }
 
         let clock = clock::Clock::get().unwrap();
-        /*if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
+        if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
             return Err(ErrorCode::RepaymentPeriodNotExceeded.into());
-        }*/
+        }
 
         if order.withdrew_at != 0 {
             return Err(ErrorCode::AlreadyLiquidated.into());

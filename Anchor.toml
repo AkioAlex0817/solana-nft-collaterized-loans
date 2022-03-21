@@ -4,14 +4,14 @@ seeds = false
 solana_nft_collaterized_loans = "255yi18db8EQa9DgWQ8xmiVxBhE37ViN75ie2m64p4Wg"
 
 [programs.devnet]
-solana_nft_collaterized_loans = "2BgeCAUB7cyShYRN8eeuHM6Ergh9B3xFXjuYTwHu4PPR"
+solana_nft_collaterized_loans = "7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
 cluster = "devnet"
-wallet = "/root/.config/solana/id.json"
+wallet = "/home/alex/blockchain/Keys/alex.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
