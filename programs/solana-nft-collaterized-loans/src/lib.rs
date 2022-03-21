@@ -15,7 +15,6 @@ pub mod solana_nft_collaterized_loans {
         nft_collaterized_loans.order_id = 0;
         nft_collaterized_loans.total_additional_collateral = 0;
         nft_collaterized_loans.nonce = _nonce;
-
         Ok(())
     }
 
@@ -60,6 +59,7 @@ pub mod solana_nft_collaterized_loans {
 
         // Save Info
         let order = &mut ctx.accounts.order;
+        let nft_collaterized_loans = &mut ctx.accounts.cloans;
         order.borrower = ctx.accounts.borrower.key();
         order.stablecoin_vault = ctx.accounts.stablecoin_vault.key();
         order.nft_mint = ctx.accounts.nft_mint.key();
@@ -73,9 +73,9 @@ pub mod solana_nft_collaterized_loans {
         order.loan_start_time = 0; // placeholder
         order.paid_back_at = 0;
         order.withdrew_at = 0;
+        order.order_id = nft_collaterized_loans.order_id;
         order.nonce = _nonce;
 
-        let nft_collaterized_loans = &mut ctx.accounts.cloans;
         nft_collaterized_loans.total_additional_collateral += additional_collateral;
         nft_collaterized_loans.order_id += 1;
 
@@ -311,6 +311,7 @@ pub struct Initialize<'info> {
     )]
     /// CHECK: Test
     pub signer: UncheckedAccount<'info>,
+
 }
 
 #[derive(Accounts)]
@@ -732,10 +733,10 @@ pub struct Order {
     pub paid_back_at: u64,
     // time the lender liquidated the loan & withdrew the collateral
     pub withdrew_at: u64,
-
     // status of the order
     pub order_status: bool,
 
+    pub order_id: u64,
     // nonce
     pub nonce: u8,
 }
