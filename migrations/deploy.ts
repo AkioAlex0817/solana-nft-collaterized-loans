@@ -14,7 +14,7 @@ module.exports = async function (provider) {
 
     // Add your deploy script here.
 
-    const program = anchor.workspace.SolanaNftCollaterizedLoans as Program<SolanaNftCollaterizedLoans>;
+    /*const program = anchor.workspace.SolanaNftCollaterizedLoans as Program<SolanaNftCollaterizedLoans>;
 
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
 
@@ -47,5 +47,5 @@ module.exports = async function (provider) {
     });
 
     console.log("Summary Account:", signer.toString());
-    console.log("Tx: ", tx);
+    console.log("Tx: ", tx);*/
 };
