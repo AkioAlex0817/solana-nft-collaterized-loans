@@ -1,7 +1,4 @@
 import * as anchor from "@project-serum/anchor";
-
-import {Order} from "../src/Models/Order";
-import {useProgram} from "../utils/usePrograms";
 import {NFT_LOAN_KEY, STABLE_COIN_KEY, USDC_VAULT_KEY} from "../utils/consts";
 import {ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID} from "@solana/spl-token";
 
@@ -29,8 +26,10 @@ type CreateOrder = {
 export const createOrder = async ({program, connection, wallet, nft, amount, interest, duration}: CreateOrder) => {
     try {
         const fetch = await program.account.cloans.fetch(NFT_LOAN_KEY);
+        const nftMintPubKey = new anchor.web3.PublicKey(nft);
         const nftLoanPubKey = new anchor.web3.PublicKey(NFT_LOAN_KEY);
         const stableMintPubKey = new anchor.web3.PublicKey(STABLE_COIN_KEY);
+        const stableVaultPubKey = new anchor.web3.PublicKey(USDC_VAULT_KEY);
         const [signer, signerBump] = await anchor.web3.PublicKey.findProgramAddress([nftLoanPubKey.toBuffer()], program.programId);
         const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
@@ -41,23 +40,25 @@ export const createOrder = async ({program, connection, wallet, nft, amount, int
         let userUsdc = await Token.getAssociatedTokenAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             TOKEN_PROGRAM_ID,
-            new anchor.web3.PublicKey(STABLE_COIN_KEY),
-            program.provider.wallet.publicKey
-        );
-        let nftVaultObject = new Token(
-            connection,
             stableMintPubKey,
-            TOKEN_PROGRAM_ID,
-            wallet,
+            wallet.publicKey
         );
-        let nftCoinVault = await nftVaultObject.createAccount(signer);
+        console.log("User USDC Key: ", userUsdc.toString());
+        const [nftCoinVault, nftVaultBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                nftMintPubKey.toBuffer(),
+            ],
+            program.programId);
+        console.log("NFT Vault: ", nftCoinVault.toString());
 
+        console.log("Order: ", order.toString());
         await program.rpc.createOrder(orderBump, new anchor.BN(amount), new anchor.BN(interest), new anchor.BN(duration), new anchor.BN(Math.round(amount / 10)), {
             accounts: {
                 cloans: nftLoanPubKey,
-                stablecoinMint: new anchor.web3.PublicKey(STABLE_COIN_KEY),
-                stablecoinVault: new anchor.web3.PublicKey(USDC_VAULT_KEY),
-                nftMint: new anchor.web3.PublicKey(nft),
+                stablecoinMint: stableMintPubKey,
+                stablecoinVault: stableVaultPubKey,
+                userStablecoinVault : userUsdc,
+                nftMint: nftMintPubKey,
                 nftVault: nftCoinVault,
                 userNftVault: userUsdc,
                 order: order,
@@ -65,6 +66,7 @@ export const createOrder = async ({program, connection, wallet, nft, amount, int
                 signer: signer,
                 systemProgram: anchor.web3.SystemProgram.programId,
                 tokenProgram: TOKEN_PROGRAM_ID,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             },
             signers: [wallet]
         });

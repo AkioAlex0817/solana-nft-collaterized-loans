@@ -121,7 +121,12 @@ const Header = () => {
                                 value: amount.toString(),
                                 onChange: (event) => {
                                     // @ts-ignore
-                                    handleAmountChange(parseInt(event.target.value));
+                                    let value = parseInt(event.target.value);
+                                    if (Number.isNaN(value)) {
+                                        handleAmountChange(0);
+                                    } else {
+                                        handleAmountChange(value);
+                                    }
                                 },
                             }}
                         />
@@ -139,7 +144,12 @@ const Header = () => {
                                 value: interest.toString(),
                                 onChange: (event) => {
                                     // @ts-ignore
-                                    handleInterestChange(parseInt(event.target.value));
+                                    let value = parseInt(event.target.value);
+                                    if (Number.isNaN(value)) {
+                                        handleInterestChange(0);
+                                    } else {
+                                        handleInterestChange(value);
+                                    }
                                 },
                             }}
                         />
