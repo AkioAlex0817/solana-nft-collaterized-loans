@@ -20,7 +20,7 @@ const ORDER_PDA_SEED = "order";
 describe("solana-nft-collaterized-loans", () => {
     const USDC = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
 
-    let isTestPayBack: boolean = true;
+    let isTestPayBack: boolean = false;
     let stableCoinMintKeyPair: anchor.web3.Keypair;
     let stableCoinMintObject: Token;
     let stableCoinMintPubKey: anchor.web3.PublicKey;
@@ -322,26 +322,33 @@ describe("solana-nft-collaterized-loans", () => {
         }
     });
 
-    /*it("Liquidity", async () => {
+    it("Liquidity", async () => {
         if (!isTestPayBack) {
-            const [currentOrder, currentOrderBump] = await anchor.web3.PublicKey.findProgramAddress(
+            const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
+            const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([stableCoinMintPubKey.toBuffer(), Buffer.from(STABLE_COIN_PDA_SEED)], program.programId);
+            const [nft, nftBump] = await anchor.web3.PublicKey.findProgramAddress(
+                [
+                    nftMintPubKey.toBuffer(),
+                    Buffer.from(NFT_PDA_SEED)
+                ], program.programId);
+            const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress(
                 [
                     Buffer.from(new anchor.BN(1).toString()),
-                    nftCollaterizedLoansKeyPair.publicKey.toBuffer()
-                ],
-                program.programId);
-            await program.rpc.liquidate(new anchor.BN(1), {
+                    Buffer.from(ORDER_PDA_SEED),
+                ], program.programId
+            );
+            await program.rpc.liquidate(new anchor.BN(1),stableBump, nftBump,  {
                 accounts: {
-                    cloans: nftCollaterizedLoansKeyPair.publicKey,
-                    order: currentOrder,
-                    stablecoinMint: stableCoinMintPubKey,
-                    stablecoinVault: stableCoinVault,
-                    lenderStablecoinVault: bobStableCoinWallet,
+                    config: config,
+                    order: order,
+                    stableCoinMint: stableCoinMintPubKey,
+                    stableCoinVault: stable,
+                    lenderStableCoinVault: bobStableCoinWallet,
                     nftMint: nftMintPubKey,
-                    nftVault: nftCoinVault,
+                    nftVault: nft,
                     lenderNftVault: bobNftWallet,
                     lender: bob.publicKey,
-                    signer: signer,
+                    borrower: alice.publicKey,
                     systemProgram: anchor.web3.SystemProgram.programId,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
@@ -357,10 +364,9 @@ describe("solana-nft-collaterized-loans", () => {
             assert.strictEqual(await utils.getTokenBalance(provider, bobNftWallet), 1);
 
             // Check vault after Liquidity (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, stableCoinVault), 0);
-            assert.strictEqual(await utils.getTokenBalance(provider, nftCoinVault), 0);
+            assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
         } else {
             console.log("Skip Liquidity");
         }
-    })*/
+    })
 });

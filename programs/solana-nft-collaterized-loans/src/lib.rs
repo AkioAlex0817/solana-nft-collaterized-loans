@@ -297,9 +297,9 @@ pub mod solana_nft_collaterized_loans {
         }
 
         let clock = clock::Clock::get().unwrap();
-        if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
+        /*if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
             return Err(ErrorCode::RepaymentPeriodNotExceeded.into());
-        }
+        }*/
 
         if order.withdrew_at != 0 {
             return Err(ErrorCode::AlreadyLiquidated.into());
@@ -333,7 +333,7 @@ pub mod solana_nft_collaterized_loans {
                 ctx.accounts.token_program.to_account_info(),
                 token::CloseAccount {
                     account: ctx.accounts.nft_vault.to_account_info(),
-                    destination: ctx.accounts.order.borrower,
+                    destination: ctx.accounts.borrower.to_account_info(),
                     authority: ctx.accounts.nft_vault.to_account_info(),
                 },
                 signer,
@@ -698,6 +698,7 @@ pub struct Liquidate<'info> {
     has_one = lender,
     constraint = order.nft_vault == nft_vault.key(),
     constraint = order.nft_mint == nft_mint.key(),
+    constraint = order.borrower == borrower.key(),
     seeds = [
     _order_id.to_string().as_ref(),
     constants::ORDER_PDA_SEED.as_ref(),
@@ -745,7 +746,9 @@ pub struct Liquidate<'info> {
     )]
     pub lender_nft_vault: Box<Account<'info, TokenAccount>>,
 
-
+    #[account(mut)]
+    /// CHECK: back to borrower
+    pub borrower: AccountInfo<'info>,
 
     #[account(mut)]
     pub lender: Signer<'info>,
