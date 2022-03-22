@@ -3,9 +3,9 @@ import {Connection, PublicKey} from "@solana/web3.js";
 import * as anchor from "@project-serum/anchor";
 
 import idl from "../idl/solana_nft_collaterized_loans.json";
+import {PROGRAM_ID} from "./consts";
 
-const SOLANA_NFT_COLLATERIZED_LOANS_PROGRAM = '2BgeCAUB7cyShYRN8eeuHM6Ergh9B3xFXjuYTwHu4PPR';
-const programID = new PublicKey(SOLANA_NFT_COLLATERIZED_LOANS_PROGRAM);
+const programID = new PublicKey(PROGRAM_ID);
 
 export interface Wallet {
     signTransaction(
@@ -22,7 +22,7 @@ export interface Wallet {
 type ProgramProps = {
     connection: Connection;
     wallet: Wallet;
-}
+};
 
 export const useProgram = ({connection, wallet}: ProgramProps) => {
     const [program, setProgram] = useState<anchor.Program<anchor.Idl>>();
