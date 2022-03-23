@@ -22,8 +22,8 @@ module.exports = async function (provider) {
     const ORDER_PDA_SEED = "order";
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
 
-    let initializeSection: boolean = true;
-    let mintSection: boolean = false;
+    let initializeSection: boolean = false;
+    let mintSection: boolean = true;
     //--------------Start Initialize Section----------------
     if (initializeSection) {
         let stableCoinMintPubKey = new anchor.web3.PublicKey(USDC_MINT_KEY);

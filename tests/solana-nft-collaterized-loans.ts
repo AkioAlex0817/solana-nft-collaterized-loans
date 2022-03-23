@@ -183,7 +183,6 @@ describe("solana-nft-collaterized-loans", () => {
                 Buffer.from(NFT_PDA_SEED)
             ], program.programId);
 
-
         await program.rpc.cancelOrder(new anchor.BN(0), stableBump, nftBump, {
             accounts: {
                 config: config,
