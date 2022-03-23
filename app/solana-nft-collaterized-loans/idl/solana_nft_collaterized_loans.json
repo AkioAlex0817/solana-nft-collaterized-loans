@@ -6,29 +6,48 @@
       "name": "initialize",
       "accounts": [
         {
-          "name": "cloans",
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "configuration",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "stablecoinMint",
+          "name": "stableCoinMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "stablecoinVault",
+          "name": "stableCoinVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "signer",
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
           "isMut": false,
           "isSigner": false
         }
       ],
       "args": [
         {
-          "name": "nonce",
+          "name": "configNonce",
+          "type": "u8"
+        },
+        {
+          "name": "stableNonce",
           "type": "u8"
         }
       ]
@@ -37,22 +56,22 @@
       "name": "createOrder",
       "accounts": [
         {
-          "name": "cloans",
+          "name": "config",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "stablecoinMint",
+          "name": "stableCoinMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "stablecoinVault",
+          "name": "stableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "userStablecoinVault",
+          "name": "userStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
@@ -82,11 +101,6 @@
           "isSigner": true
         },
         {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -104,7 +118,15 @@
       ],
       "args": [
         {
-          "name": "nonce",
+          "name": "stableNonce",
+          "type": "u8"
+        },
+        {
+          "name": "nftNonce",
+          "type": "u8"
+        },
+        {
+          "name": "orderNonce",
           "type": "u8"
         },
         {
@@ -129,7 +151,7 @@
       "name": "cancelOrder",
       "accounts": [
         {
-          "name": "cloans",
+          "name": "config",
           "isMut": true,
           "isSigner": false
         },
@@ -139,17 +161,17 @@
           "isSigner": false
         },
         {
-          "name": "stablecoinMint",
+          "name": "stableCoinMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "stablecoinVault",
+          "name": "stableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "userStablecoinVault",
+          "name": "userStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
@@ -174,11 +196,6 @@
           "isSigner": true
         },
         {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -193,6 +210,14 @@
         {
           "name": "orderId",
           "type": "u64"
+        },
+        {
+          "name": "stableNonce",
+          "type": "u8"
+        },
+        {
+          "name": "nftNonce",
+          "type": "u8"
         }
       ]
     },
@@ -200,7 +225,7 @@
       "name": "giveLoan",
       "accounts": [
         {
-          "name": "cloans",
+          "name": "config",
           "isMut": true,
           "isSigner": false
         },
@@ -210,22 +235,22 @@
           "isSigner": false
         },
         {
-          "name": "stablecoinMint",
+          "name": "stableCoinMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "stablecoinVault",
+          "name": "stableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "lenderStablecoinVault",
+          "name": "lenderStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "borrowerStablecoinVault",
+          "name": "borrowerStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
@@ -235,11 +260,6 @@
           "isSigner": true
         },
         {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": false
-        },
-        {
           "name": "systemProgram",
           "isMut": false,
           "isSigner": false
@@ -254,6 +274,10 @@
         {
           "name": "orderId",
           "type": "u64"
+        },
+        {
+          "name": "stableNonce",
+          "type": "u8"
         }
       ]
     },
@@ -261,7 +285,7 @@
       "name": "payback",
       "accounts": [
         {
-          "name": "cloans",
+          "name": "config",
           "isMut": true,
           "isSigner": false
         },
@@ -271,22 +295,22 @@
           "isSigner": false
         },
         {
-          "name": "stablecoinMint",
+          "name": "stableCoinMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "stablecoinVault",
+          "name": "stableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "lenderStablecoinVault",
+          "name": "lenderStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "userStablecoinVault",
+          "name": "borrowerStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
@@ -301,7 +325,7 @@
           "isSigner": false
         },
         {
-          "name": "userNftVault",
+          "name": "borrowerNftVault",
           "isMut": true,
           "isSigner": false
         },
@@ -309,11 +333,6 @@
           "name": "borrower",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "systemProgram",
@@ -330,6 +349,14 @@
         {
           "name": "orderId",
           "type": "u64"
+        },
+        {
+          "name": "stableNonce",
+          "type": "u8"
+        },
+        {
+          "name": "nftNonce",
+          "type": "u8"
         }
       ]
     },
@@ -337,7 +364,7 @@
       "name": "liquidate",
       "accounts": [
         {
-          "name": "cloans",
+          "name": "config",
           "isMut": true,
           "isSigner": false
         },
@@ -347,17 +374,17 @@
           "isSigner": false
         },
         {
-          "name": "stablecoinMint",
+          "name": "stableCoinMint",
           "isMut": false,
           "isSigner": false
         },
         {
-          "name": "stablecoinVault",
+          "name": "stableCoinVault",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "lenderStablecoinVault",
+          "name": "lenderStableCoinVault",
           "isMut": true,
           "isSigner": false
         },
@@ -377,14 +404,14 @@
           "isSigner": false
         },
         {
+          "name": "borrower",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
           "name": "lender",
           "isMut": true,
           "isSigner": true
-        },
-        {
-          "name": "signer",
-          "isMut": false,
-          "isSigner": false
         },
         {
           "name": "systemProgram",
@@ -401,22 +428,30 @@
         {
           "name": "orderId",
           "type": "u64"
+        },
+        {
+          "name": "stableNonce",
+          "type": "u8"
+        },
+        {
+          "name": "nftNonce",
+          "type": "u8"
         }
       ]
     }
   ],
   "accounts": [
     {
-      "name": "Cloans",
+      "name": "Configuration",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "stablecoinMint",
+            "name": "stableCoinMint",
             "type": "publicKey"
           },
           {
-            "name": "stablecoinVault",
+            "name": "stableCoinVault",
             "type": "publicKey"
           },
           {
@@ -444,7 +479,7 @@
             "type": "publicKey"
           },
           {
-            "name": "stablecoinVault",
+            "name": "stableCoinVault",
             "type": "publicKey"
           },
           {
@@ -538,5 +573,8 @@
       "name": "AlreadyLiquidated",
       "msg": "Already liquidated"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr"
+  }
 }
