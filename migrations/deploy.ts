@@ -5,6 +5,7 @@
 import {Token, TOKEN_PROGRAM_ID} from "@solana/spl-token";
 import {Program} from "@project-serum/anchor";
 import {SolanaNftCollaterizedLoans} from "../target/types/solana_nft_collaterized_loans";
+
 const utils = require('../tests/utils');
 
 const anchor = require("@project-serum/anchor");
@@ -15,53 +16,53 @@ module.exports = async function (provider) {
 
     // Add your deploy script here.
     const program = anchor.workspace.SolanaNftCollaterizedLoans as Program<SolanaNftCollaterizedLoans>;
-    /*const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
-    const NFT_LOAN_SECRET_KEY = '[116,156,99,69,45,49,181,32,228,186,107,154,18,55,36,197,227,252,29,187,108,26,189,136,141,51,114,151,185,174,214,252,253,95,35,0,198,211,183,83,109,245,95,55,8,78,148,195,226,236,148,193,12,191,36,24,86,192,185,76,241,228,144,166]';
-    const NFT_LOAN_PUBLIC_KEY = 'J44HeGXA2Dw7YTJDcf5hqjmxrHHhPMM47447pvs2CEY5';
-    const USDC_VAULT_KEY = 'G6i1PY47JuS1AWrQecWLHtDas8boxrhtKqjskFL2oeTv';
+    const CONFIG_PDA_SEED = "config";
+    const STABLE_COIN_PDA_SEED = "stable";
+    const NFT_PDA_SEED = "nft";
+    const ORDER_PDA_SEED = "order";
+    const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
 
-    let nftLoansKeyPair = anchor.web3.Keypair.fromSecretKey(new Uint8Array(JSON.parse(NFT_LOAN_SECRET_KEY)));
-
-    let usdcPubkey = new anchor.web3.PublicKey(USDC_MINT_KEY);
-    const [signer, signerBump] = await anchor.web3.PublicKey.findProgramAddress([nftLoansKeyPair.publicKey.toBuffer()], program.programId);
-    /!*const stableTokenObject = new Token(
-        provider.connection,
-        usdcPubkey,
-        TOKEN_PROGRAM_ID,
-        provider.wallet.payer,
-    );*!/
-    let stableVault = new anchor.web3.PublicKey(USDC_VAULT_KEY);
-
-    const tx = await program.rpc.initialize(signerBump, {
-        accounts: {
-            cloans: nftLoansKeyPair.publicKey,
-            stablecoinMint: usdcPubkey,
-            stablecoinVault: stableVault,
-            signer: signer,
-        },
-        instructions: [
-            await program.account.cloans.createInstruction(nftLoansKeyPair, program.account.cloans.size),
-        ],
-        signers: [nftLoansKeyPair]
-    });
-
-    console.log(tx);
-
-    const fetch = await program.account.cloans.fetch(nftLoansKeyPair.publicKey);
-    console.log(fetch);*/
+    let initializeSection: boolean = true;
+    let mintSection: boolean = false;
+    //--------------Start Initialize Section----------------
+    if (initializeSection) {
+        let stableCoinMintPubKey = new anchor.web3.PublicKey(USDC_MINT_KEY);
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
+        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([
+            stableCoinMintPubKey.toBuffer(),
+            Buffer.from(STABLE_COIN_PDA_SEED),
+        ], program.programId);
+        await program.rpc.initialize(configBump, stableBump, {
+            accounts: {
+                signer: provider.wallet.publicKey,
+                configuration: config,
+                stableCoinMint: stableCoinMintPubKey,
+                stableCoinVault: stable,
+                systemProgram: anchor.web3.SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+            },
+            // @ts-ignore
+            signers: [provider.wallet.payer],
+        });
+        const fetch = await program.account.configuration.fetch(config);
+        console.log(fetch);
+    }
+    //--------------End Initialize Section------------------
 
     //---------------------Start Mint Section----------------------
     // Create NFT Token For Test
-    let mePubKey = "Ekkx4E93eFRJ1VHascQjQjsbcqKATYv4cBVK6kAH2bvf";
-    let mintKeyNft = anchor.web3.Keypair.generate();
-    let nftMintObject = await utils.createMint(mintKeyNft, provider, provider.wallet.publicKey, null, 0, TOKEN_PROGRAM_ID);
-    let nftMintPubKey = nftMintObject.publicKey;
+    if (mintSection) {
+        let mePubKey = "Ekkx4E93eFRJ1VHascQjQjsbcqKATYv4cBVK6kAH2bvf";
+        let mintKeyNft = anchor.web3.Keypair.generate();
+        let nftMintObject = await utils.createMint(mintKeyNft, provider, provider.wallet.publicKey, null, 0, TOKEN_PROGRAM_ID);
+        let nftMintPubKey = nftMintObject.publicKey;
 
-    let meNFt = await nftMintObject.createAssociatedTokenAccount(new anchor.web3.PublicKey(mePubKey));
+        let meNFt = await nftMintObject.createAssociatedTokenAccount(new anchor.web3.PublicKey(mePubKey));
 
-    console.log(meNFt.toString());
-    //Mint NFt Token to me
-    await utils.mintToAccount(provider, nftMintPubKey, meNFt, 1);
-
+        console.log(meNFt.toString());
+        //Mint NFt Token to me
+        await utils.mintToAccount(provider, nftMintPubKey, meNFt, 1);
+    }
     //---------------------End Mint Section----------------------
 };

@@ -12,8 +12,10 @@ pub mod constants {
 declare_id!("7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr");
 
 pub mod token_constants {
-    //pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
-    pub const USDC_MINT_PUBKEY: &str = "G7EY516o2hAWDxQ3g8Z9tSCh5gdkhp5Sz7WhHNFQ9kqA";
+    // Devnet StableCoin
+    pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
+    // Localnet StableCoin
+    //pub const USDC_MINT_PUBKEY: &str = "G7EY516o2hAWDxQ3g8Z9tSCh5gdkhp5Sz7WhHNFQ9kqA";
 }
 
 #[program]
