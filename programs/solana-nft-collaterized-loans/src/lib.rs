@@ -9,7 +9,7 @@ pub mod constants {
     pub const ORDER_PDA_SEED: &[u8] = b"order";
 }
 
-declare_id!("7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr");
+declare_id!("qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn");
 
 pub mod token_constants {
     // Devnet StableCoin

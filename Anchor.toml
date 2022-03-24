@@ -1,10 +1,10 @@
 [features]
 seeds = false
 [programs.localnet]
-solana_nft_collaterized_loans = "7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr"
+solana_nft_collaterized_loans = "qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn"
 
 [programs.devnet]
-solana_nft_collaterized_loans = "7Ags9aVzdyCP2SALzWhgRJG8VRAsPiAs5wGCTEn2PMTr"
+solana_nft_collaterized_loans = "qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn"
 
 [registry]
 url = "https://anchor.projectserum.com"
