@@ -44,7 +44,7 @@ describe("solana-nft-collaterized-loans", () => {
         let keyPairFile = fs.readFileSync('/home/alex/blockchain/solana-nft-collaterized-loans/tests/keys/stablecoin.json', "utf-8");
         let keyPairData = JSON.parse(keyPairFile);
         stableCoinMintKeyPair = anchor.web3.Keypair.fromSecretKey(new Uint8Array(keyPairData));
-        stableCoinMintObject = await utils.createMint(stableCoinMintKeyPair, provider, provider.wallet.publicKey, null, 0, TOKEN_PROGRAM_ID);
+        stableCoinMintObject = await utils.createMint(stableCoinMintKeyPair, provider, provider.wallet.publicKey, null, 9, TOKEN_PROGRAM_ID);
         stableCoinMintPubKey = stableCoinMintObject.publicKey;
 
         console.log(stableCoinMintPubKey.toString());
@@ -58,7 +58,7 @@ describe("solana-nft-collaterized-loans", () => {
         await provider.connection.confirmTransaction(
             await provider.connection.requestAirdrop(
                 alice.publicKey,
-                10000000000
+                10_000_000_000
             ),
             "confirmed"
         );
@@ -72,7 +72,7 @@ describe("solana-nft-collaterized-loans", () => {
         await provider.connection.confirmTransaction(
             await provider.connection.requestAirdrop(
                 bob.publicKey,
-                10000000000
+                10_000_000_000
             ),
             "confirmed"
         );
@@ -82,10 +82,10 @@ describe("solana-nft-collaterized-loans", () => {
         bobStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(bob.publicKey);
 
         // Airdrop StableCoin To Alice
-        await utils.mintToAccount(provider, stableCoinMintPubKey, aliceStableCoinWallet, 1000);
+        await utils.mintToAccount(provider, stableCoinMintPubKey, aliceStableCoinWallet, 1000_000_000_000);
 
         // Airdrop StableCoin To Bob
-        await utils.mintToAccount(provider, stableCoinMintPubKey, bobStableCoinWallet, 1000);
+        await utils.mintToAccount(provider, stableCoinMintPubKey, bobStableCoinWallet, 1000_000_000_000);
 
         // Create Nft Token
         let mintKeyNft = anchor.web3.Keypair.generate();
@@ -100,15 +100,22 @@ describe("solana-nft-collaterized-loans", () => {
 
         console.log("Alice: ", alice.publicKey.toString());
         console.log("Bob: ", bob.publicKey.toString());
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000);
-        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1000_000_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
         assert.strictEqual(await utils.getTokenBalance(provider, bobNftWallet), 0);
     });
 
     it('Initialize', async () => {
-        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
-        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([stableCoinMintPubKey.toBuffer(), Buffer.from(STABLE_COIN_PDA_SEED)], program.programId);
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(CONFIG_PDA_SEED)
+            ], program.programId);
+        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                stableCoinMintPubKey.toBuffer(),
+                Buffer.from(STABLE_COIN_PDA_SEED)
+            ], program.programId);
         await program.rpc.initialize(configBump, stableBump, {
             accounts: {
                 signer: provider.wallet.publicKey,
@@ -127,8 +134,15 @@ describe("solana-nft-collaterized-loans", () => {
     });
 
     it('Create Order', async () => {
-        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
-        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([stableCoinMintPubKey.toBuffer(), Buffer.from(STABLE_COIN_PDA_SEED)], program.programId);
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(CONFIG_PDA_SEED)
+            ], program.programId);
+        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                stableCoinMintPubKey.toBuffer(),
+                Buffer.from(STABLE_COIN_PDA_SEED)
+            ], program.programId);
         const [nft, nftBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 nftMintPubKey.toBuffer(),
@@ -139,7 +153,7 @@ describe("solana-nft-collaterized-loans", () => {
             Buffer.from(ORDER_PDA_SEED),
         ], program.programId);
 
-        await program.rpc.createOrder(stableBump, nftBump, orderBump, new anchor.BN(100), new anchor.BN(10), new anchor.BN(10), new anchor.BN(10), {
+        await program.rpc.createOrder(stableBump, nftBump, orderBump, {
             accounts: {
                 config: config,
                 stableCoinMint: stableCoinMintPubKey,
@@ -161,22 +175,29 @@ describe("solana-nft-collaterized-loans", () => {
         assert.strictEqual(fetch.orderId.toString(), "1");
 
         // Check alice wallet after create Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 990);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
         // Check vault wallet after create Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, stable), 10);
+        assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, nft), 1);
     });
 
     it("Cancel Order", async () => {
-        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(CONFIG_PDA_SEED)
+            ], program.programId);
         const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(new anchor.BN(0).toString()),
                 Buffer.from(ORDER_PDA_SEED),
             ],
             program.programId);
-        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([stableCoinMintPubKey.toBuffer(), Buffer.from(STABLE_COIN_PDA_SEED)], program.programId);
+        const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                stableCoinMintPubKey.toBuffer(),
+                Buffer.from(STABLE_COIN_PDA_SEED)
+            ], program.programId);
         const [nft, nftBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 nftMintPubKey.toBuffer(),
@@ -203,13 +224,13 @@ describe("solana-nft-collaterized-loans", () => {
         assert.strictEqual(fetch.orderStatus, false);
 
         // Check alice wallet after Cancel Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
         // Check vault wallet after Cancel Order (ID: 0)
         assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
     });
 
-    it("Give Loan", async () => {
+    /*it("Give Loan", async () => {
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
         const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([stableCoinMintPubKey.toBuffer(), Buffer.from(STABLE_COIN_PDA_SEED)], program.programId);
         const [nft, nftBump] = await anchor.web3.PublicKey.findProgramAddress(
@@ -367,5 +388,5 @@ describe("solana-nft-collaterized-loans", () => {
         } else {
             console.log("Skip Liquidity");
         }
-    })
+    })*/
 });

@@ -20,6 +20,7 @@ pub mod token_constants {
 
 #[program]
 pub mod solana_nft_collaterized_loans {
+    use std::time::Duration;
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>, _config_nonce: u8, _stable_nonce: u8) -> Result<()> {
@@ -38,15 +39,10 @@ pub mod solana_nft_collaterized_loans {
         _stable_nonce: u8,
         _nft_nonce: u8,
         _order_nonce: u8,
-        request_amount: u64,
-        interest: u64,
-        period: u64,
-        additional_collateral: u64,
     ) -> Result<()> {
-        if request_amount == 0 {
-            return Err(ErrorCode::AmountMustBeGreaterThanZero.into());
-        }
-
+        let additional_collateral: u64 = 8_000_000_000;
+        //let period = Duration::from_secs(60 * 60 * 24 * 7).as_secs();
+        let period = Duration::from_secs(60 * 10).as_secs();
         // Transfer collateral to vault.
         {
             let cpi_ctx = CpiContext::new(
@@ -54,7 +50,7 @@ pub mod solana_nft_collaterized_loans {
                 token::Transfer {
                     from: ctx.accounts.user_nft_vault.to_account_info(),
                     to: ctx.accounts.nft_vault.to_account_info(),
-                    authority: ctx.accounts.borrower.to_account_info(), //todo use user account as signer
+                    authority: ctx.accounts.borrower.to_account_info(), //Lock nft
                 },
             );
             token::transfer(cpi_ctx, 1)?;
@@ -67,7 +63,7 @@ pub mod solana_nft_collaterized_loans {
                 token::Transfer {
                     from: ctx.accounts.user_stable_coin_vault.to_account_info(),
                     to: ctx.accounts.stable_coin_vault.to_account_info(),
-                    authority: ctx.accounts.borrower.to_account_info(), //todo use user account as signer
+                    authority: ctx.accounts.borrower.to_account_info(), //
                 },
             );
             token::transfer(cpi_ctx, additional_collateral)?;
@@ -81,8 +77,6 @@ pub mod solana_nft_collaterized_loans {
         order.stable_coin_vault = ctx.accounts.stable_coin_vault.key();
         order.nft_mint = ctx.accounts.nft_mint.key();
         order.nft_vault = ctx.accounts.nft_vault.key();
-        order.request_amount = request_amount;
-        order.interest = interest;
         order.period = period;
         order.additional_collateral = additional_collateral;
         order.lender = order.key(); // just a placeholder
@@ -101,7 +95,7 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
-    pub fn cancel_order(ctx: Context<CancelOrder>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8) -> Result<()> {
+    pub fn cancel_order(ctx: Context<CancelOrder>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8, _order_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let config = &mut ctx.accounts.config;
 
@@ -166,14 +160,10 @@ pub mod solana_nft_collaterized_loans {
         }
         config.total_additional_collateral -= order.additional_collateral;
 
-        order.order_status = false;
-
-        // Sidenote: Preferred to close the account after this
-
         Ok(())
     }
 
-    pub fn give_loan(ctx: Context<GiveLoan>, _order_id: u64, _stable_nonce: u8) -> Result<()> {
+    /*pub fn give_loan(ctx: Context<GiveLoan>, _order_id: u64, _stable_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         if order.loan_start_time != 0 && order.order_status == false {
             return Err(ErrorCode::LoanAlreadyStarted.into());
@@ -212,6 +202,9 @@ pub mod solana_nft_collaterized_loans {
         if order.loan_start_time.checked_add(order.period).unwrap() < clock.unix_timestamp as u64 {
             return Err(ErrorCode::RepaymentPeriodExceeded.into());
         }
+
+        // Get payback amount and return amount
+        let payback_amount: u64 = 3.2;
 
         // Save Info
         order.paid_back_at = clock.unix_timestamp as u64;
@@ -366,7 +359,7 @@ pub mod solana_nft_collaterized_loans {
         config.total_additional_collateral -= order.additional_collateral;
 
         Ok(())
-    }
+    }*/
 }
 
 #[derive(Accounts)]
@@ -496,6 +489,7 @@ pub struct CancelOrder<'info> {
     _order_id.to_string().as_ref(),
     constants::ORDER_PDA_SEED.as_ref(),
     ],
+    close = borrower,
     bump = order.nonce
     )]
     pub order: Box<Account<'info, Order>>,
@@ -625,6 +619,7 @@ pub struct Payback<'info> {
     _order_id.to_string().as_ref(),
     constants::ORDER_PDA_SEED.as_ref(),
     ],
+    close = borrower,
     bump = order.nonce
     )]
     pub order: Box<Account<'info, Order>>,
@@ -786,10 +781,6 @@ pub struct Order {
     pub nft_mint: Pubkey,
     /// collateral vault holding the nft
     pub nft_vault: Pubkey,
-    // request amount
-    pub request_amount: u64,
-    // interest amount
-    pub interest: u64,
     // the loan period
     pub period: u64,
     // additional collateral
@@ -814,8 +805,6 @@ pub struct Order {
 
 #[error_code]
 pub enum ErrorCode {
-    #[msg("Amount must be greater than zero.")]
-    AmountMustBeGreaterThanZero,
     #[msg("Loan has started or already been canceled")]
     LoanAlreadyStarted,
     #[msg("Loan not provided yet")]

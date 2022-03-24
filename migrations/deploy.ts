@@ -53,7 +53,7 @@ module.exports = async function (provider) {
     //---------------------Start Mint Section----------------------
     // Create NFT Token For Test
     if (mintSection) {
-        let mePubKey = "Ekkx4E93eFRJ1VHascQjQjsbcqKATYv4cBVK6kAH2bvf";
+        let mePubKey = "4rWMaduuHcZzZg4WJmpDP7Rhe4UfqvkdUkrqD8mRx5UB";
         let mintKeyNft = anchor.web3.Keypair.generate();
         let nftMintObject = await utils.createMint(mintKeyNft, provider, provider.wallet.publicKey, null, 0, TOKEN_PROGRAM_ID);
         let nftMintPubKey = nftMintObject.publicKey;
