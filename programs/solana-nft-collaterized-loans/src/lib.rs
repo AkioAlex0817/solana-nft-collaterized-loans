@@ -15,7 +15,7 @@ pub mod token_constants {
     // Devnet StableCoin
     pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
     // Localnet StableCoin
-    //pub const USDC_MINT_PUBKEY: &str = "G7EY516o2hAWDxQ3g8Z9tSCh5gdkhp5Sz7WhHNFQ9kqA";
+    // pub const USDC_MINT_PUBKEY: &str = "G7EY516o2hAWDxQ3g8Z9tSCh5gdkhp5Sz7WhHNFQ9kqA";
 }
 
 #[program]
@@ -40,7 +40,10 @@ pub mod solana_nft_collaterized_loans {
         _nft_nonce: u8,
         _order_nonce: u8,
     ) -> Result<()> {
+        let request_amount: u64 = 80_000_000_000;
         let additional_collateral: u64 = 8_000_000_000;
+        let payback_amount : u64 = 3_200_000_000;
+        let interest: u64 = 4_800_000_000;
         //let period = Duration::from_secs(60 * 60 * 24 * 7).as_secs();
         let period = Duration::from_secs(60 * 10).as_secs();
         // Transfer collateral to vault.
@@ -77,6 +80,9 @@ pub mod solana_nft_collaterized_loans {
         order.stable_coin_vault = ctx.accounts.stable_coin_vault.key();
         order.nft_mint = ctx.accounts.nft_mint.key();
         order.nft_vault = ctx.accounts.nft_vault.key();
+        order.request_amount = request_amount;
+        order.payback_amount = payback_amount;
+        order.interest = interest;
         order.period = period;
         order.additional_collateral = additional_collateral;
         order.lender = order.key(); // just a placeholder
@@ -95,7 +101,7 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
-    pub fn cancel_order(ctx: Context<CancelOrder>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8, _order_nonce: u8) -> Result<()> {
+    pub fn cancel_order(ctx: Context<CancelOrder>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let config = &mut ctx.accounts.config;
 
@@ -163,7 +169,7 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
-    /*pub fn give_loan(ctx: Context<GiveLoan>, _order_id: u64, _stable_nonce: u8) -> Result<()> {
+    pub fn give_loan(ctx: Context<GiveLoan>, _order_id: u64, _stable_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         if order.loan_start_time != 0 && order.order_status == false {
             return Err(ErrorCode::LoanAlreadyStarted.into());
@@ -202,12 +208,6 @@ pub mod solana_nft_collaterized_loans {
         if order.loan_start_time.checked_add(order.period).unwrap() < clock.unix_timestamp as u64 {
             return Err(ErrorCode::RepaymentPeriodExceeded.into());
         }
-
-        // Get payback amount and return amount
-        let payback_amount: u64 = 3.2;
-
-        // Save Info
-        order.paid_back_at = clock.unix_timestamp as u64;
 
         // Pay Loan
         {
@@ -278,8 +278,6 @@ pub mod solana_nft_collaterized_loans {
         }
         config.total_additional_collateral -= order.additional_collateral;
 
-        // Sidenote: Preferred to close the account after this
-
         Ok(())
     }
 
@@ -292,16 +290,13 @@ pub mod solana_nft_collaterized_loans {
         }
 
         let clock = clock::Clock::get().unwrap();
-        /*if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
+        if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
             return Err(ErrorCode::RepaymentPeriodNotExceeded.into());
-        }*/
+        }
 
         if order.withdrew_at != 0 {
             return Err(ErrorCode::AlreadyLiquidated.into());
         }
-
-        // Save Info
-        order.withdrew_at = clock.unix_timestamp as u64;
 
         // Transfer nft collateral.
         {
@@ -359,7 +354,7 @@ pub mod solana_nft_collaterized_loans {
         config.total_additional_collateral -= order.additional_collateral;
 
         Ok(())
-    }*/
+    }
 }
 
 #[derive(Accounts)]
@@ -700,6 +695,7 @@ pub struct Liquidate<'info> {
     _order_id.to_string().as_ref(),
     constants::ORDER_PDA_SEED.as_ref(),
     ],
+    close = borrower,
     bump = order.nonce
     )]
     pub order: Box<Account<'info, Order>>,
@@ -781,6 +777,12 @@ pub struct Order {
     pub nft_mint: Pubkey,
     /// collateral vault holding the nft
     pub nft_vault: Pubkey,
+    // request amount
+    pub request_amount: u64,
+    // interest amount
+    pub interest: u64,
+    // payback amoumt
+    pub payback_amount: u64,
     // the loan period
     pub period: u64,
     // additional collateral
