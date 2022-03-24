@@ -128,22 +128,6 @@
         {
           "name": "orderNonce",
           "type": "u8"
-        },
-        {
-          "name": "requestAmount",
-          "type": "u64"
-        },
-        {
-          "name": "interest",
-          "type": "u64"
-        },
-        {
-          "name": "period",
-          "type": "u64"
-        },
-        {
-          "name": "additionalCollateral",
-          "type": "u64"
         }
       ]
     },
@@ -499,6 +483,10 @@
             "type": "u64"
           },
           {
+            "name": "paybackAmount",
+            "type": "u64"
+          },
+          {
             "name": "period",
             "type": "u64"
           },
@@ -545,31 +533,26 @@
   "errors": [
     {
       "code": 6000,
-      "name": "AmountMustBeGreaterThanZero",
-      "msg": "Amount must be greater than zero."
-    },
-    {
-      "code": 6001,
       "name": "LoanAlreadyStarted",
       "msg": "Loan has started or already been canceled"
     },
     {
-      "code": 6002,
+      "code": 6001,
       "name": "LoanNotProvided",
       "msg": "Loan not provided yet"
     },
     {
-      "code": 6003,
+      "code": 6002,
       "name": "RepaymentPeriodExceeded",
       "msg": "Repayment Period has been exceeded"
     },
     {
-      "code": 6004,
+      "code": 6003,
       "name": "RepaymentPeriodNotExceeded",
       "msg": "Repayment Period has not been exceeded"
     },
     {
-      "code": 6005,
+      "code": 6004,
       "name": "AlreadyLiquidated",
       "msg": "Already liquidated"
     }
