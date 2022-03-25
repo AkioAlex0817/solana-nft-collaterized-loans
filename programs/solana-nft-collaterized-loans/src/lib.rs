@@ -12,6 +12,7 @@ pub mod constants {
 declare_id!("qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn");
 
 pub mod token_constants {
+    pub const SERVICE_USDC_WALLET : &str = "83orEURBiPft6cTE1y3VYr7tDvKJyKUZ13SzHJyvaoCu";
     // Devnet StableCoin
     pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
     // Localnet StableCoin
@@ -27,6 +28,7 @@ pub mod solana_nft_collaterized_loans {
         let config = &mut ctx.accounts.configuration;
         config.stable_coin_mint = ctx.accounts.stable_coin_mint.key();
         config.stable_coin_vault = ctx.accounts.stable_coin_vault.key();
+        config.fee_coin_vault = ctx.accounts.fee_coin_vault.key();
         config.order_id = 0;
         config.total_additional_collateral = 0;
         config.nonce = _config_nonce;
@@ -42,10 +44,13 @@ pub mod solana_nft_collaterized_loans {
     ) -> Result<()> {
         let request_amount: u64 = 80_000_000;
         let additional_collateral: u64 = 8_000_000;
+        let service_fee: u64 = 800_000;
         let payback_amount: u64 = 3_200_000;
         let interest: u64 = 4_800_000;
         //let period = Duration::from_secs(60 * 60 * 24 * 7).as_secs();
         let period = Duration::from_secs(60 * 10).as_secs();
+
+        let config = &mut ctx.accounts.config;
         // Transfer collateral to vault.
         {
             let cpi_ctx = CpiContext::new(
@@ -57,6 +62,19 @@ pub mod solana_nft_collaterized_loans {
                 },
             );
             token::transfer(cpi_ctx, 1)?;
+        }
+
+        // Transfer fee to Service Wallet
+        {
+            let cpi_ctx = CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer{
+                    from: ctx.accounts.user_stable_coin_vault.to_account_info(),
+                    to: config.fee_coin_vault.to_account_info(),
+                    authority: ctx.accounts.borrower.to_account_info(),
+                }
+            );
+            token::transfer(cpi_ctx, service_fee)?;
         }
 
         // Transfer additional collateral to vault
@@ -75,7 +93,6 @@ pub mod solana_nft_collaterized_loans {
 
         // Save Info
         let order = &mut ctx.accounts.order;
-        let config = &mut ctx.accounts.config;
         order.borrower = ctx.accounts.borrower.key();
         order.stable_coin_vault = ctx.accounts.stable_coin_vault.key();
         order.nft_mint = ctx.accounts.nft_mint.key();
@@ -409,6 +426,11 @@ pub struct Initialize<'info> {
     bump
     )]
     pub stable_coin_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+    token::mint = stable_coin_mint,
+    )]
+    pub fee_coin_vault: Box<Account<'info, TokenAccount>>,
 
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -783,6 +805,8 @@ pub struct Configuration {
     pub stable_coin_mint: Pubkey,
     // Vault holding the stablecoins -- mostly for holding the collateral stablecoins
     pub stable_coin_vault: Pubkey,
+
+    pub fee_coin_vault: Pubkey,
     // latest order id
     pub order_id: u64,
     // total additional collateral
