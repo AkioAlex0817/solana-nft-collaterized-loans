@@ -22,8 +22,9 @@ module.exports = async function (provider) {
     const ORDER_PDA_SEED = "order";
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
 
-    let initializeSection: boolean = true;
+    let initializeSection: boolean = false;
     let mintSection: boolean = false;
+    let do_test: boolean = true;
     //--------------Start Initialize Section----------------
     if (initializeSection) {
         let stableCoinMintPubKey = new anchor.web3.PublicKey(USDC_MINT_KEY);
@@ -56,7 +57,7 @@ module.exports = async function (provider) {
     //---------------------Start Mint Section----------------------
     // Create NFT Token For Test
     if (mintSection) {
-        let mePubKey = "4rWMaduuHcZzZg4WJmpDP7Rhe4UfqvkdUkrqD8mRx5UB";
+        let mePubKey = "Ekkx4E93eFRJ1VHascQjQjsbcqKATYv4cBVK6kAH2bvf";
         let mintKeyNft = anchor.web3.Keypair.generate();
         let nftMintObject = await utils.createMint(mintKeyNft, provider, provider.wallet.publicKey, null, 0, TOKEN_PROGRAM_ID);
         let nftMintPubKey = nftMintObject.publicKey;
@@ -68,4 +69,18 @@ module.exports = async function (provider) {
         await utils.mintToAccount(provider, nftMintPubKey, meNFt, 1);
     }
     //---------------------End Mint Section----------------------
+
+
+    //do Test
+
+    if(do_test){
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(CONFIG_PDA_SEED)
+            ], program.programId);
+        const fetch = await program.account.configuration.all();
+        console.log(fetch[0].account.stableCoinMint.toString());
+        console.log(fetch[0].account.stableCoinVault.toString());
+    }
+    //------------------------End To Test--------------------------
 };
