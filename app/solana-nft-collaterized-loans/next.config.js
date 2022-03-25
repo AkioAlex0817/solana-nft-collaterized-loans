@@ -1,5 +1,8 @@
 const nextConfig = {
-    reactStrictMode: true
+    reactStrictMode: true,
+    //todo delete
+    //assetPrefix: '/',
+    //basePath: '/akioalex0817.github.io'
 }
 
 module.exports = nextConfig;
