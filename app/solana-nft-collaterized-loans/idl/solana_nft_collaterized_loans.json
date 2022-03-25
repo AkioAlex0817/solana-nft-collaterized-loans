@@ -530,6 +530,93 @@
       }
     }
   ],
+  "events": [
+    {
+      "name": "CreatedOrderEvent",
+      "fields": [
+        {
+          "name": "orderKey",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "borrower",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "CanceledOrderEvent",
+      "fields": [
+        {
+          "name": "orderKey",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "borrower",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "LoanOrderEvent",
+      "fields": [
+        {
+          "name": "orderKey",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "borrower",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "lender",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "PayBackOrderEvent",
+      "fields": [
+        {
+          "name": "orderKey",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "borrower",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "LiquidityOrderEvent",
+      "fields": [
+        {
+          "name": "orderKey",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "borrower",
+          "type": "publicKey",
+          "index": false
+        },
+        {
+          "name": "lender",
+          "type": "publicKey",
+          "index": false
+        }
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 6000,
