@@ -27,7 +27,10 @@ module.exports = async function (provider) {
     //--------------Start Initialize Section----------------
     if (initializeSection) {
         let stableCoinMintPubKey = new anchor.web3.PublicKey(USDC_MINT_KEY);
-        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(CONFIG_PDA_SEED)
+            ], program.programId);
         const [stable, stableBump] = await anchor.web3.PublicKey.findProgramAddress([
             stableCoinMintPubKey.toBuffer(),
             Buffer.from(STABLE_COIN_PDA_SEED),

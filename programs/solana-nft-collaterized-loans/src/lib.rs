@@ -13,9 +13,9 @@ declare_id!("qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn");
 
 pub mod token_constants {
     // Devnet StableCoin
-    pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
+    //pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
     // Localnet StableCoin
-    // pub const USDC_MINT_PUBKEY: &str = "G7EY516o2hAWDxQ3g8Z9tSCh5gdkhp5Sz7WhHNFQ9kqA";
+    pub const USDC_MINT_PUBKEY: &str = "G7EY516o2hAWDxQ3g8Z9tSCh5gdkhp5Sz7WhHNFQ9kqA";
 }
 
 #[program]
@@ -40,10 +40,10 @@ pub mod solana_nft_collaterized_loans {
         _nft_nonce: u8,
         _order_nonce: u8,
     ) -> Result<()> {
-        let request_amount: u64 = 80_000_000_000;
-        let additional_collateral: u64 = 8_000_000_000;
-        let payback_amount : u64 = 3_200_000_000;
-        let interest: u64 = 4_800_000_000;
+        let request_amount: u64 = 80_000_000;
+        let additional_collateral: u64 = 8_000_000;
+        let payback_amount: u64 = 3_200_000;
+        let interest: u64 = 4_800_000;
         //let period = Duration::from_secs(60 * 60 * 24 * 7).as_secs();
         let period = Duration::from_secs(60 * 10).as_secs();
         // Transfer collateral to vault.
@@ -97,6 +97,11 @@ pub mod solana_nft_collaterized_loans {
         config.order_id += 1;
 
         order.order_status = true;
+
+        emit!(CreatedOrderEvent {
+            order_key: *order.to_account_info().key,
+            borrower: *ctx.accounts.borrower.to_account_info().key,
+        });
 
         Ok(())
     }
@@ -166,6 +171,11 @@ pub mod solana_nft_collaterized_loans {
         }
         config.total_additional_collateral -= order.additional_collateral;
 
+        emit!(CanceledOrderEvent {
+            order_key: *order.to_account_info().key,
+            borrower: *ctx.accounts.borrower.to_account_info().key,
+        });
+
         Ok(())
     }
 
@@ -193,6 +203,11 @@ pub mod solana_nft_collaterized_loans {
         order.loan_start_time = clock::Clock::get().unwrap().unix_timestamp as u64;
         order.order_status = false;
 
+        emit!(LoanOrderEvent {
+            order_key: *order.to_account_info().key,
+            borrower: order.borrower,
+            lender: *ctx.accounts.lender.to_account_info().key,
+        });
         Ok(())
     }
 
@@ -278,6 +293,11 @@ pub mod solana_nft_collaterized_loans {
         }
         config.total_additional_collateral -= order.additional_collateral;
 
+        emit!(PayBackOrderEvent {
+            order_key: *order.to_account_info().key,
+            borrower: *ctx.accounts.borrower.to_account_info().key,
+        });
+
         Ok(())
     }
 
@@ -353,6 +373,11 @@ pub mod solana_nft_collaterized_loans {
         }
         config.total_additional_collateral -= order.additional_collateral;
 
+        emit!(LiquidityOrderEvent {
+            order_key: *order.to_account_info().key,
+            borrower: *ctx.accounts.borrower.to_account_info().key,
+            lender: *ctx.accounts.lender.to_account_info().key,
+        });
         Ok(())
     }
 }
@@ -817,4 +842,36 @@ pub enum ErrorCode {
     RepaymentPeriodNotExceeded,
     #[msg("Already liquidated")]
     AlreadyLiquidated,
+}
+
+#[event]
+pub struct CreatedOrderEvent {
+    pub order_key: Pubkey,
+    pub borrower: Pubkey,
+}
+
+#[event]
+pub struct CanceledOrderEvent {
+    pub order_key: Pubkey,
+    pub borrower: Pubkey,
+}
+
+#[event]
+pub struct LoanOrderEvent {
+    pub order_key: Pubkey,
+    pub borrower: Pubkey,
+    pub lender: Pubkey,
+}
+
+#[event]
+pub struct PayBackOrderEvent {
+    pub order_key: Pubkey,
+    pub borrower: Pubkey,
+}
+
+#[event]
+pub struct LiquidityOrderEvent {
+    pub order_key: Pubkey,
+    pub borrower: Pubkey,
+    pub lender: Pubkey,
 }

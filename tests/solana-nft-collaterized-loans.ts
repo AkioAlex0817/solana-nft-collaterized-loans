@@ -20,7 +20,7 @@ const ORDER_PDA_SEED = "order";
 describe("solana-nft-collaterized-loans", () => {
     const USDC = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
 
-    let isTestPayBack: boolean = false;
+    let isTestPayBack: boolean = true;
     let stableCoinMintKeyPair: anchor.web3.Keypair;
     let stableCoinMintObject: Token;
     let stableCoinMintPubKey: anchor.web3.PublicKey;
@@ -44,7 +44,7 @@ describe("solana-nft-collaterized-loans", () => {
         let keyPairFile = fs.readFileSync('/home/alex/blockchain/solana-nft-collaterized-loans/tests/keys/stablecoin.json', "utf-8");
         let keyPairData = JSON.parse(keyPairFile);
         stableCoinMintKeyPair = anchor.web3.Keypair.fromSecretKey(new Uint8Array(keyPairData));
-        stableCoinMintObject = await utils.createMint(stableCoinMintKeyPair, provider, provider.wallet.publicKey, null, 9, TOKEN_PROGRAM_ID);
+        stableCoinMintObject = await utils.createMint(stableCoinMintKeyPair, provider, provider.wallet.publicKey, null, 6, TOKEN_PROGRAM_ID);
         stableCoinMintPubKey = stableCoinMintObject.publicKey;
 
         console.log(stableCoinMintPubKey.toString());
@@ -82,10 +82,10 @@ describe("solana-nft-collaterized-loans", () => {
         bobStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(bob.publicKey);
 
         // Airdrop StableCoin To Alice
-        await utils.mintToAccount(provider, stableCoinMintPubKey, aliceStableCoinWallet, 1000_000_000_000);
+        await utils.mintToAccount(provider, stableCoinMintPubKey, aliceStableCoinWallet, 1000_000_000);
 
         // Airdrop StableCoin To Bob
-        await utils.mintToAccount(provider, stableCoinMintPubKey, bobStableCoinWallet, 1000_000_000_000);
+        await utils.mintToAccount(provider, stableCoinMintPubKey, bobStableCoinWallet, 1000_000_000);
 
         // Create Nft Token
         let mintKeyNft = anchor.web3.Keypair.generate();
@@ -100,8 +100,8 @@ describe("solana-nft-collaterized-loans", () => {
 
         console.log("Alice: ", alice.publicKey.toString());
         console.log("Bob: ", bob.publicKey.toString());
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000_000);
-        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1000_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1000_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
         assert.strictEqual(await utils.getTokenBalance(provider, bobNftWallet), 0);
     });
@@ -134,6 +134,11 @@ describe("solana-nft-collaterized-loans", () => {
     });
 
     it('Create Order', async () => {
+        const listener = program.addEventListener("CreatedOrderEvent", (event, slot) => {
+            console.log("slot: ", slot);
+            console.log("event: ", event);
+            program.removeEventListener(listener);
+        })
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(CONFIG_PDA_SEED)
@@ -175,14 +180,20 @@ describe("solana-nft-collaterized-loans", () => {
         assert.strictEqual(fetch.orderId.toString(), "1");
 
         // Check alice wallet after create Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
         // Check vault wallet after create Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, nft), 1);
     });
 
+
     it("Cancel Order", async () => {
+        const listener = program.addEventListener("CanceledOrderEvent", (event, slot) => {
+            console.log("slot: ", slot);
+            console.log("event: ", event);
+            program.removeEventListener(listener);
+        })
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(CONFIG_PDA_SEED)
@@ -222,13 +233,18 @@ describe("solana-nft-collaterized-loans", () => {
         });
 
         // Check alice wallet after Cancel Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
         // Check vault wallet after Cancel Order (ID: 0)
         assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
     });
 
     it("Give Loan", async () => {
+        const listener = program.addEventListener("LoanOrderEvent", (event, slot) => {
+            console.log("slot: ", slot);
+            console.log("event: ", event);
+            program.removeEventListener(listener);
+        })
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(CONFIG_PDA_SEED)
@@ -268,10 +284,10 @@ describe("solana-nft-collaterized-loans", () => {
         });
 
         // Check alice wallet after create Order (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
         // Check vault wallet after create Order (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, nft), 1);
 
         await program.rpc.giveLoan(new anchor.BN(1), stableBump, {
@@ -290,9 +306,9 @@ describe("solana-nft-collaterized-loans", () => {
         });
 
         // Check alice wallet after GiveLoan (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1072_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1072_000_000);
         // Check bob wallet after GiveLoan (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 920_000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 920_000_000);
 
         //Check order status (ID: 1)
         const fetch = await program.account.order.fetch(order);
@@ -303,6 +319,11 @@ describe("solana-nft-collaterized-loans", () => {
 
     it("PayBack", async () => {
         if (isTestPayBack) {
+            const listener = program.addEventListener("PayBackOrderEvent", (event, slot) => {
+                console.log("slot: ", slot);
+                console.log("event: ", event);
+                program.removeEventListener(listener);
+            })
             const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
                 [
                     Buffer.from(CONFIG_PDA_SEED)
@@ -343,10 +364,10 @@ describe("solana-nft-collaterized-loans", () => {
             });
 
             // Check alice wallet after PayBack (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 995_200_000_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 995_200_000);
             assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
             // Check bob wallet after PayBack (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1004_800_000_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1004_800_000);
             // Check vault after PayBack (ID: 1)
             assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
         } else {
@@ -356,6 +377,11 @@ describe("solana-nft-collaterized-loans", () => {
 
     it("Liquidity", async () => {
         if (!isTestPayBack) {
+            const listener = program.addEventListener("LiquidityOrderEvent", (event, slot) => {
+                console.log("slot: ", slot);
+                console.log("event: ", event);
+                program.removeEventListener(listener);
+            })
             const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
                 [
                     Buffer.from(CONFIG_PDA_SEED)
@@ -395,11 +421,11 @@ describe("solana-nft-collaterized-loans", () => {
             });
 
             // Check alice wallet after Liquidity (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1072_000_000_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1072_000_000);
             assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
 
             // Check bob wallet after Liquidity (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 928_000_000_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 928_000_000);
             assert.strictEqual(await utils.getTokenBalance(provider, bobNftWallet), 1);
 
             // Check vault after Liquidity (ID: 1)
