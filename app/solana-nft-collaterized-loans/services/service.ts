@@ -13,6 +13,8 @@ type GetOrderProps = {
 export const getOrders = async ({program, filter = []}: GetOrderProps) => {
     let result: Order[] = [];
     let orders = await program.account.order.all();
+    console.log("Get ORders");
+    console.log(orders);
     orders.map((item) => {
         const orderItem: OrderData = {
             borrower: item.account.borrower,
@@ -41,12 +43,9 @@ type CreateOrder = {
     program: anchor.Program<anchor.Idl>;
     wallet: any;
     nftToken: string;
-    amount: number;
-    interest: number;
-    duration: number;
 };
 
-export const createOrder = async ({program, wallet, nftToken, amount, interest, duration}: CreateOrder) => {
+export const createOrder = async ({program, wallet, nftToken}: CreateOrder) => {
     try {
         const stableMintPubKey: anchor.web3.PublicKey = new anchor.web3.PublicKey(STABLE_COIN_KEY);
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress([Buffer.from(CONFIG_PDA_SEED)], program.programId);
@@ -63,6 +62,13 @@ export const createOrder = async ({program, wallet, nftToken, amount, interest, 
                 Buffer.from(ORDER_PDA_SEED),
             ],
             program.programId);
+        const [nft, nftBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                nftMintPubKey.toBuffer(),
+                Buffer.from(NFT_PDA_SEED)
+            ],
+            program.programId);
+
         let userUSDC = await Token.getAssociatedTokenAddress(
             ASSOCIATED_TOKEN_PROGRAM_ID,
             TOKEN_PROGRAM_ID,
@@ -74,14 +80,9 @@ export const createOrder = async ({program, wallet, nftToken, amount, interest, 
             TOKEN_PROGRAM_ID,
             nftMintPubKey,
             wallet.publicKey
-        )
-        const [nft, nftBump] = await anchor.web3.PublicKey.findProgramAddress(
-            [
-                nftMintPubKey.toBuffer(),
-                Buffer.from(NFT_PDA_SEED)
-            ],
-            program.programId);
-        await program.rpc.createOrder(stableBump, nftBump, orderBump, new anchor.BN(amount), new anchor.BN(interest), new anchor.BN(duration), new anchor.BN(Math.round(amount / 10)), {
+        );
+
+        await program.rpc.createOrder(stableBump, nftBump, orderBump, {
             accounts: {
                 config: config,
                 stableCoinMint: stableMintPubKey,

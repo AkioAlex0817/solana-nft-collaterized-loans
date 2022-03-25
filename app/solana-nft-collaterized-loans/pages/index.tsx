@@ -11,8 +11,10 @@ import {Order} from "../src/Models/Order";
 import {styled} from "@mui/material/styles";
 import LoadingButton from "@mui/lab/LoadingButton";
 import * as React from "react";
+import {STABLE_COIN_KEY} from "../utils/consts";
 
-const endpoint = "https://explorer-api.devnet.solana.com";
+//const endpoint = "https://explorer-api.devnet.solana.com";
+const endpoint = "https://api.devnet.solana.com";
 
 const connection = new anchor.web3.Connection(endpoint);
 
@@ -22,7 +24,7 @@ const LabelValueTypography = styled(Typography)({
 });
 
 const SpanValueTypography = styled(Typography)({
-    color: "#FFFFFF",
+    color: "#333333",
     fontSize: "14px",
 });
 
@@ -36,17 +38,22 @@ const Home: NextPage = () => {
     //SnackBar
     const [openSuccess, setOpenSuccess] = React.useState(false);
     const [openError, setOpenError] = React.useState(false);
+    const [openWarning, setOpenWarning] = React.useState(false);
 
     // Create Order
     const [open, setOpen] = React.useState(false);
     const [nft, setNft] = React.useState('');
-    const [amount, setAmount] = React.useState(0);
-    const [interest, setInterest] = React.useState(0);
     const [creating, setCreating] = React.useState(false);
+
+    const [usdc, setUsdc] = React.useState('--');
+
+    const [successMessage, setSuccessMessage] = React.useState('');
+    const [warningMessage, setWarningMessage] = React.useState('');
 
 
     useEffect(() => {
         fetchOrders();
+        fetchUSDCBalance();
     }, [wallet, lastUpdatedTime]);
 
     const fetchOrders = async () => {
@@ -57,6 +64,52 @@ const Home: NextPage = () => {
             } catch (error) {
             }
         }
+    }
+
+    const fetchUSDCBalance = async () => {
+        if (wallet && program) {
+            try {
+                const usdcWallets = await program.provider.connection.getTokenAccountsByOwner(wallet.publicKey, {mint: new anchor.web3.PublicKey(STABLE_COIN_KEY)});
+                if (usdcWallets.value.length > 0) {
+                    const balance = await program.provider.connection.getTokenAccountBalance(usdcWallets.value[0].pubkey);
+                    setUsdc(balance.value.uiAmountString ?? '--');
+                }
+            } catch (error) {
+
+            }
+        }
+    }
+
+    if (program) {
+        program.addEventListener("CreatedOrderEvent", (event, slot) => {
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+            setSuccessMessage('New Order Created!');
+            setOpenSuccess(true);
+        });
+
+        program.addEventListener("CanceledOrderEvent", (event, slot) => {
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+            setWarningMessage('Order Canceled!');
+            setOpenWarning(true);
+        });
+
+        program.addEventListener("LoanOrderEvent", (event, slot) => {
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        });
+
+        program.addEventListener("PayBackOrderEvent", (event, slot) => {
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        });
+
+        program.addEventListener("LiquidityOrderEvent", (event, slot) => {
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        })
+
     }
 
     // Create Order Section
@@ -72,26 +125,17 @@ const Home: NextPage = () => {
         setNft(val);
     }
 
-    const handleAmountChange = (val: number) => {
-        setAmount(val);
-    }
-
-    const handleInterestChange = (val: number) => {
-        setInterest(val);
-    }
-
     const createOrderHandler = async () => {
         if (!program) return;
-        if (creating || nft == '' || amount == 0 || interest == 0 || interest > amount) return;
+        if (creating || nft == '') return;
         setCreating(true);
-        const tx = await createOrder({program, wallet, nftToken: nft, amount, interest, duration: 120000});
+        const tx = await createOrder({program, wallet, nftToken: nft});
         setCreating(false);
         if (tx) {
+            setSuccessMessage('Order create request sent successfully!');
             setOpenSuccess(true);
             setOpen(false);
-            setTimeout(() => {
-                setLastUpdatedTime(Date.now());
-            }, 5000);
+            setNft("");
         } else {
             setOpenError(true);
         }
@@ -112,6 +156,13 @@ const Home: NextPage = () => {
         setOpenError(false);
     };
 
+    const handleWarningClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpenWarning(false);
+    };
+
     const cancelOrderHandler = async (item: Order) => {
         if (!program) return;
         if (loading) return;
@@ -119,10 +170,9 @@ const Home: NextPage = () => {
         const tx = await cancelOrder({program, wallet, orderData: item});
         setLoading(false);
         if (tx) {
+            orders.splice(orders.findIndex((remove) => remove.orderId == item.orderId), 1);
+            setSuccessMessage("Order remove request sent successfully!");
             setOpenSuccess(true);
-            setTimeout(() => {
-                setLastUpdatedTime(Date.now());
-            }, 5000);
         } else {
             setOpenError(true);
         }
@@ -135,10 +185,8 @@ const Home: NextPage = () => {
         const tx = await loanOrder({program, wallet, orderData: item});
         setLoading(false);
         if (tx) {
+            setSuccessMessage("Loan request sent successfully!")
             setOpenSuccess(true);
-            setTimeout(() => {
-                setLastUpdatedTime(Date.now());
-            }, 5000);
         } else {
             setOpenError(true);
         }
@@ -151,10 +199,8 @@ const Home: NextPage = () => {
         const tx = await payBack({program, wallet, orderData: item});
         setLoading(false);
         if (tx) {
+            setSuccessMessage("PayBack request sent successfully!")
             setOpenSuccess(true);
-            setTimeout(() => {
-                setLastUpdatedTime(Date.now());
-            }, 5000);
         } else {
             setOpenError(true);
         }
@@ -167,10 +213,8 @@ const Home: NextPage = () => {
         const tx = await liquidity({program, wallet, orderData: item});
         setLoading(false);
         if (tx) {
+            setSuccessMessage("Liquidity request sent successfully!")
             setOpenSuccess(true);
-            setTimeout(() => {
-                setLastUpdatedTime(Date.now());
-            }, 5000);
         } else {
             setOpenError(true);
         }
@@ -178,6 +222,8 @@ const Home: NextPage = () => {
 
     return (
         <Container maxWidth={"xl"} sx={{paddingTop: "10px"}}>
+            My USDC: {usdc}
+            <Box sx={{height: "20px"}}/>
             {wallet ? <Button variant="contained" size={"small"} onClick={handleClickOpen}>Create New Order</Button> : ''}
             <Box sx={{height: "20px"}}/>
             {wallet ? orders.length > 0 ? <Box>
@@ -200,7 +246,7 @@ const Home: NextPage = () => {
                                                     <LabelValueTypography>NFT Token: </LabelValueTypography>
                                                     <SpanValueTypography>{item.nftMint.toBase58()}</SpanValueTypography>
                                                 </Stack>
-                                                <Stack direction={"row"} spacing={4}>
+                                                {/*<Stack direction={"row"} spacing={4}>
                                                     <Stack direction={"row"} spacing={2}>
                                                         <LabelValueTypography>Request Amount: </LabelValueTypography>
                                                         <SpanValueTypography>{item.requestAmount.toString()} USDC</SpanValueTypography>
@@ -209,7 +255,7 @@ const Home: NextPage = () => {
                                                         <LabelValueTypography>Interest Amount: </LabelValueTypography>
                                                         <SpanValueTypography>{item.interest.toString()} USDC</SpanValueTypography>
                                                     </Stack>
-                                                </Stack>
+                                                </Stack>*/}
                                             </Stack>
                                         </Grid>
                                         <Grid item xs={2}>
@@ -270,12 +316,17 @@ const Home: NextPage = () => {
 
             <Snackbar open={openSuccess} autoHideDuration={3000} onClose={handleSuccessClose} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
                 <Alert onClose={handleSuccessClose} severity="success" sx={{width: '100%'}}>
-                    Success!
+                    {successMessage}
                 </Alert>
             </Snackbar>
             <Snackbar open={openError} autoHideDuration={3000} onClose={handleErrorClose} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
                 <Alert onClose={handleErrorClose} severity="error" sx={{width: '100%'}}>
                     Error!
+                </Alert>
+            </Snackbar>
+            <Snackbar open={openWarning} autoHideDuration={3000} onClose={handleWarningClose} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
+                <Alert onClose={handleWarningClose} severity="warning" sx={{width: '100%'}}>
+                    {warningMessage}
                 </Alert>
             </Snackbar>
             <Dialog open={open}>
@@ -293,52 +344,6 @@ const Home: NextPage = () => {
                             onChange: (event) => {
                                 // @ts-ignore
                                 handleNftChange(event.target.value);
-                            },
-                        }}
-                    />
-                    <Typography component={"span"} sx={{fontSize: "12px"}}>Request Amount</Typography>
-                    <TextField
-                        margin="dense"
-                        id="request_amount"
-                        size={"small"}
-                        fullWidth
-                        variant="outlined"
-                        inputProps={{
-                            type: 'tel',
-                            min: '0',
-                            style: {textAlign: 'right'},
-                            value: amount.toString(),
-                            onChange: (event) => {
-                                // @ts-ignore
-                                let value = parseInt(event.target.value);
-                                if (Number.isNaN(value)) {
-                                    handleAmountChange(0);
-                                } else {
-                                    handleAmountChange(value);
-                                }
-                            },
-                        }}
-                    />
-                    <Typography component={"span"} sx={{fontSize: "12px"}}>Interest Amount</Typography>
-                    <TextField
-                        margin="dense"
-                        id="interest_amount"
-                        size={"small"}
-                        fullWidth
-                        variant="outlined"
-                        inputProps={{
-                            type: 'tel',
-                            min: '0',
-                            style: {textAlign: 'right'},
-                            value: interest.toString(),
-                            onChange: (event) => {
-                                // @ts-ignore
-                                let value = parseInt(event.target.value);
-                                if (Number.isNaN(value)) {
-                                    handleInterestChange(0);
-                                } else {
-                                    handleInterestChange(value);
-                                }
                             },
                         }}
                     />

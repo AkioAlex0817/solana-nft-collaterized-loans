@@ -27,7 +27,7 @@ interface MyAppProps extends AppProps {
 
 const theme = createTheme({
     palette: {
-        mode: 'dark',
+        mode: 'light',
         primary: {
             main: deepPurple[700],
         },
