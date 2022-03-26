@@ -20,7 +20,7 @@ const ORDER_PDA_SEED = "order";
 describe("solana-nft-collaterized-loans", () => {
     const USDC = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
 
-    let isTestPayBack: boolean = true;
+    let isTestPayBack: boolean = false;
     let stableCoinMintKeyPair: anchor.web3.Keypair;
     let stableCoinMintObject: Token;
     let stableCoinMintPubKey: anchor.web3.PublicKey;
@@ -36,6 +36,8 @@ describe("solana-nft-collaterized-loans", () => {
     let bobStableCoinWallet: anchor.web3.PublicKey;
     let bobNftWallet: anchor.web3.PublicKey;
 
+    let feeVault: anchor.web3.PublicKey;
+
     let configKeyPair: anchor.web3.Keypair;
 
     it('Prepare', async () => {
@@ -46,9 +48,7 @@ describe("solana-nft-collaterized-loans", () => {
         stableCoinMintKeyPair = anchor.web3.Keypair.fromSecretKey(new Uint8Array(keyPairData));
         stableCoinMintObject = await utils.createMint(stableCoinMintKeyPair, provider, provider.wallet.publicKey, null, 6, TOKEN_PROGRAM_ID);
         stableCoinMintPubKey = stableCoinMintObject.publicKey;
-
         console.log(stableCoinMintPubKey.toString());
-
         // Load Alice
         let alicePairFile = fs.readFileSync('/home/alex/blockchain/solana-nft-collaterized-loans/tests/keys/alice.json', "utf-8");
         let alicePairData = JSON.parse(alicePairFile);
@@ -81,6 +81,9 @@ describe("solana-nft-collaterized-loans", () => {
         aliceStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(alice.publicKey);
         bobStableCoinWallet = await stableCoinMintObject.createAssociatedTokenAccount(bob.publicKey);
 
+        // Create stable Token wallet for Fee Vault
+        feeVault = await stableCoinMintObject.createAssociatedTokenAccount(provider.wallet.publicKey);
+
         // Airdrop StableCoin To Alice
         await utils.mintToAccount(provider, stableCoinMintPubKey, aliceStableCoinWallet, 1000_000_000);
 
@@ -105,7 +108,6 @@ describe("solana-nft-collaterized-loans", () => {
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
         assert.strictEqual(await utils.getTokenBalance(provider, bobNftWallet), 0);
     });
-
     it('Initialize', async () => {
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
@@ -122,6 +124,7 @@ describe("solana-nft-collaterized-loans", () => {
                 configuration: config,
                 stableCoinMint: stableCoinMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVault,
                 systemProgram: anchor.web3.SystemProgram.programId,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -163,6 +166,7 @@ describe("solana-nft-collaterized-loans", () => {
                 config: config,
                 stableCoinMint: stableCoinMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVault,
                 userStableCoinVault: aliceStableCoinWallet,
                 nftMint: nftMintPubKey,
                 nftVault: nft,
@@ -180,11 +184,14 @@ describe("solana-nft-collaterized-loans", () => {
         assert.strictEqual(fetch.orderId.toString(), "1");
 
         // Check alice wallet after create Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 991_200_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
         // Check vault wallet after create Order (ID: 0)
         assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, nft), 1);
+
+        // Check Fee Vault wallet after Create Order(ID: 0)
+        assert.strictEqual(await utils.getTokenBalance(provider, feeVault), 800_000);
     });
 
 
@@ -233,10 +240,13 @@ describe("solana-nft-collaterized-loans", () => {
         });
 
         // Check alice wallet after Cancel Order (ID: 0)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1000_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 999_200_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
         // Check vault wallet after Cancel Order (ID: 0)
         assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
+
+        // Check Fee Vault wallet after Cancel Order(ID: 0)
+        assert.strictEqual(await utils.getTokenBalance(provider, feeVault), 800_000);
     });
 
     it("Give Loan", async () => {
@@ -270,6 +280,7 @@ describe("solana-nft-collaterized-loans", () => {
                 config: config,
                 stableCoinMint: stableCoinMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVault,
                 userStableCoinVault: aliceStableCoinWallet,
                 nftMint: nftMintPubKey,
                 nftVault: nft,
@@ -284,11 +295,14 @@ describe("solana-nft-collaterized-loans", () => {
         });
 
         // Check alice wallet after create Order (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 992_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 990_400_000);
         assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
         // Check vault wallet after create Order (ID: 1)
         assert.strictEqual(await utils.getTokenBalance(provider, stable), 8_000_000);
         assert.strictEqual(await utils.getTokenBalance(provider, nft), 1);
+
+        // Check Fee Vault wallet after GiveLoan (ID: 1)
+        assert.strictEqual(await utils.getTokenBalance(provider, feeVault), 1_600_000);
 
         await program.rpc.giveLoan(new anchor.BN(1), stableBump, {
             accounts: {
@@ -296,6 +310,7 @@ describe("solana-nft-collaterized-loans", () => {
                 order: order,
                 stableCoinMint: stableCoinMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVault,
                 lenderStableCoinVault: bobStableCoinWallet,
                 borrowerStableCoinVault: aliceStableCoinWallet,
                 lender: bob.publicKey,
@@ -306,9 +321,12 @@ describe("solana-nft-collaterized-loans", () => {
         });
 
         // Check alice wallet after GiveLoan (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1072_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1070_400_000);
         // Check bob wallet after GiveLoan (ID: 1)
-        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 920_000_000);
+        assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 919_200_000);
+
+        // Check Fee Vault wallet after GiveLoan (ID: 1)
+        assert.strictEqual(await utils.getTokenBalance(provider, feeVault), 2_400_000);
 
         //Check order status (ID: 1)
         const fetch = await program.account.order.fetch(order);
@@ -364,12 +382,15 @@ describe("solana-nft-collaterized-loans", () => {
             });
 
             // Check alice wallet after PayBack (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 995_200_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 993_600_000);
             assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 1);
             // Check bob wallet after PayBack (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1004_800_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 1004_000_000);
             // Check vault after PayBack (ID: 1)
             assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
+
+            // Check Fee Vault wallet after PayBack (ID: 1)
+            assert.strictEqual(await utils.getTokenBalance(provider, feeVault), 2_400_000);
         } else {
             console.log("Skip PayBack");
         }
@@ -421,15 +442,18 @@ describe("solana-nft-collaterized-loans", () => {
             });
 
             // Check alice wallet after Liquidity (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1072_000_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, aliceStableCoinWallet), 1070_400_000);
             assert.strictEqual(await utils.getTokenBalance(provider, aliceNftWallet), 0);
 
             // Check bob wallet after Liquidity (ID: 1)
-            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 928_000_000);
+            assert.strictEqual(await utils.getTokenBalance(provider, bobStableCoinWallet), 927_200_000);
             assert.strictEqual(await utils.getTokenBalance(provider, bobNftWallet), 1);
 
             // Check vault after Liquidity (ID: 1)
             assert.strictEqual(await utils.getTokenBalance(provider, stable), 0);
+
+            // Check Fee Vault wallet after Liquidity (ID: 1)
+            assert.strictEqual(await utils.getTokenBalance(provider, feeVault), 2_400_000);
         } else {
             console.log("Skip Liquidity");
         }

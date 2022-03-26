@@ -12,7 +12,6 @@ pub mod constants {
 declare_id!("qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn");
 
 pub mod token_constants {
-    pub const SERVICE_USDC_WALLET : &str = "83orEURBiPft6cTE1y3VYr7tDvKJyKUZ13SzHJyvaoCu";
     // Devnet StableCoin
     pub const USDC_MINT_PUBKEY: &str = "Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr";
     // Localnet StableCoin
@@ -26,6 +25,7 @@ pub mod solana_nft_collaterized_loans {
 
     pub fn initialize(ctx: Context<Initialize>, _config_nonce: u8, _stable_nonce: u8) -> Result<()> {
         let config = &mut ctx.accounts.configuration;
+        config.owner = ctx.accounts.signer.key();
         config.stable_coin_mint = ctx.accounts.stable_coin_mint.key();
         config.stable_coin_vault = ctx.accounts.stable_coin_vault.key();
         config.fee_coin_vault = ctx.accounts.fee_coin_vault.key();
@@ -44,7 +44,7 @@ pub mod solana_nft_collaterized_loans {
     ) -> Result<()> {
         let request_amount: u64 = 80_000_000;
         let additional_collateral: u64 = 8_000_000;
-        let service_fee: u64 = 800_000;
+        let fee_amount: u64 = 800_000;
         let payback_amount: u64 = 3_200_000;
         let interest: u64 = 4_800_000;
         //let period = Duration::from_secs(60 * 60 * 24 * 7).as_secs();
@@ -68,13 +68,13 @@ pub mod solana_nft_collaterized_loans {
         {
             let cpi_ctx = CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                token::Transfer{
+                token::Transfer {
                     from: ctx.accounts.user_stable_coin_vault.to_account_info(),
-                    to: config.fee_coin_vault.to_account_info(),
+                    to: ctx.accounts.fee_coin_vault.to_account_info(),
                     authority: ctx.accounts.borrower.to_account_info(),
-                }
+                },
             );
-            token::transfer(cpi_ctx, service_fee)?;
+            token::transfer(cpi_ctx, fee_amount)?;
         }
 
         // Transfer additional collateral to vault
@@ -99,6 +99,7 @@ pub mod solana_nft_collaterized_loans {
         order.nft_vault = ctx.accounts.nft_vault.key();
         order.request_amount = request_amount;
         order.payback_amount = payback_amount;
+        order.fee_amount = fee_amount;
         order.interest = interest;
         order.period = period;
         order.additional_collateral = additional_collateral;
@@ -202,7 +203,7 @@ pub mod solana_nft_collaterized_loans {
             return Err(ErrorCode::LoanAlreadyStarted.into());
         }
 
-        // Transfer back additional collateral
+        // Transfer request amount to borrower
         {
             let cpi_ctx = CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
@@ -213,6 +214,19 @@ pub mod solana_nft_collaterized_loans {
                 },
             );
             token::transfer(cpi_ctx, order.request_amount)?;
+        }
+
+        // Transfer fee amount to service
+        {
+            let cpi_ctx = CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                token::Transfer {
+                    from: ctx.accounts.lender_stable_coin_vault.to_account_info(),
+                    to: ctx.accounts.fee_coin_vault.to_account_info(),
+                    authority: ctx.accounts.lender.to_account_info(),
+                },
+            );
+            token::transfer(cpi_ctx, order.fee_amount)?;
         }
 
         // Save Info
@@ -328,7 +342,7 @@ pub mod solana_nft_collaterized_loans {
 
         let clock = clock::Clock::get().unwrap();
         if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
-            return Err(ErrorCode::RepaymentPeriodNotExceeded.into());
+            //return Err(ErrorCode::RepaymentPeriodNotExceeded.into());
         }
 
         if order.withdrew_at != 0 {
@@ -428,7 +442,7 @@ pub struct Initialize<'info> {
     pub stable_coin_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
-    token::mint = stable_coin_mint,
+    constraint = fee_coin_vault.mint == stable_coin_mint.key(),
     )]
     pub fee_coin_vault: Box<Account<'info, TokenAccount>>,
 
@@ -444,20 +458,33 @@ pub struct CreateOrder<'info> {
     #[account(
     mut,
     has_one = stable_coin_vault,
-    has_one = stable_coin_mint
+    has_one = stable_coin_mint,
+    has_one = fee_coin_vault,
+    seeds = [constants::CONFIG_PDA_SEED.as_ref()],
+    bump = config.nonce,
     )]
     pub config: Box<Account<'info, Configuration>>,
 
     #[account(
-    address = token_constants::USDC_MINT_PUBKEY.parse::< Pubkey > ().unwrap(),
+    constraint = stable_coin_mint.key().as_ref() == config.stable_coin_mint.as_ref(),
     )]
     pub stable_coin_mint: Box<Account<'info, Mint>>,
+
     #[account(
     mut,
+    constraint = stable_coin_vault.key().as_ref() == config.stable_coin_vault.as_ref(),
+    constraint = stable_coin_vault.mint == stable_coin_mint.key(),
     seeds = [stable_coin_mint.key().as_ref(), constants::STABLE_COIN_PDA_SEED.as_ref()],
     bump = _stable_nonce,
     )]
     pub stable_coin_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+    mut,
+    constraint = fee_coin_vault.key().as_ref() == config.fee_coin_vault.as_ref(),
+    constraint = fee_coin_vault.mint == stable_coin_mint.key(),
+    )]
+    pub fee_coin_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
     mut,
@@ -516,7 +543,9 @@ pub struct CancelOrder<'info> {
     #[account(
     mut,
     has_one = stable_coin_vault,
-    has_one = stable_coin_mint
+    has_one = stable_coin_mint,
+    seeds = [constants::CONFIG_PDA_SEED.as_ref()],
+    bump = config.nonce,
     )]
     pub config: Box<Account<'info, Configuration>>,
 
@@ -537,12 +566,14 @@ pub struct CancelOrder<'info> {
     pub order: Box<Account<'info, Order>>,
 
     #[account(
-    address = token_constants::USDC_MINT_PUBKEY.parse::< Pubkey > ().unwrap(),
+    constraint = stable_coin_mint.key().as_ref() == config.stable_coin_mint.as_ref(),
     )]
     pub stable_coin_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = stable_coin_vault.key().as_ref() == config.stable_coin_vault.as_ref(),
+    constraint = stable_coin_vault.mint == stable_coin_mint.key(),
     seeds = [stable_coin_mint.key().as_ref(), constants::STABLE_COIN_PDA_SEED.as_ref()],
     bump = _stable_nonce,
     )]
@@ -558,11 +589,14 @@ pub struct CancelOrder<'info> {
     #[account(
     constraint = nft_mint.supply == 1,
     constraint = nft_mint.decimals == 0,
+    constraint = order.nft_mint == nft_mint.key(),
     )]
     pub nft_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = order.nft_vault == nft_vault.key(),
+    constraint = nft_vault.mint == nft_mint.key(),
     seeds = [nft_mint.key().as_ref(), constants::NFT_PDA_SEED.as_ref()],
     bump = _nft_nonce,
     )]
@@ -590,7 +624,10 @@ pub struct GiveLoan<'info> {
     #[account(
     mut,
     has_one = stable_coin_vault,
-    has_one = stable_coin_mint
+    has_one = stable_coin_mint,
+    has_one = fee_coin_vault,
+    seeds = [constants::CONFIG_PDA_SEED.as_ref()],
+    bump = config.nonce,
     )]
     pub config: Box<Account<'info, Configuration>>,
 
@@ -608,16 +645,25 @@ pub struct GiveLoan<'info> {
     pub order: Box<Account<'info, Order>>,
 
     #[account(
-    address = token_constants::USDC_MINT_PUBKEY.parse::< Pubkey > ().unwrap(),
+    constraint = stable_coin_mint.key().as_ref() == config.stable_coin_mint.as_ref(),
     )]
     pub stable_coin_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = stable_coin_vault.key().as_ref() == config.stable_coin_vault.as_ref(),
+    constraint = stable_coin_vault.mint == stable_coin_mint.key(),
     seeds = [stable_coin_mint.key().as_ref(), constants::STABLE_COIN_PDA_SEED.as_ref()],
     bump = _stable_nonce,
     )]
     pub stable_coin_vault: Box<Account<'info, TokenAccount>>,
+
+    #[account(
+    mut,
+    constraint = fee_coin_vault.key().as_ref() == config.fee_coin_vault.as_ref(),
+    constraint = fee_coin_vault.mint == stable_coin_mint.key(),
+    )]
+    pub fee_coin_vault: Box<Account<'info, TokenAccount>>,
 
     #[account(
     mut,
@@ -646,7 +692,9 @@ pub struct Payback<'info> {
     #[account(
     mut,
     has_one = stable_coin_vault,
-    has_one = stable_coin_mint
+    has_one = stable_coin_mint,
+    seeds = [constants::CONFIG_PDA_SEED.as_ref()],
+    bump = config.nonce,
     )]
     pub config: Box<Account<'info, Configuration>>,
 
@@ -667,12 +715,14 @@ pub struct Payback<'info> {
     pub order: Box<Account<'info, Order>>,
 
     #[account(
-    address = token_constants::USDC_MINT_PUBKEY.parse::< Pubkey > ().unwrap(),
+    constraint = stable_coin_mint.key().as_ref() == config.stable_coin_mint.as_ref(),
     )]
     pub stable_coin_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = stable_coin_vault.key().as_ref() == config.stable_coin_vault.as_ref(),
+    constraint = stable_coin_vault.mint == stable_coin_mint.key(),
     seeds = [stable_coin_mint.key().as_ref(), constants::STABLE_COIN_PDA_SEED.as_ref()],
     bump = _stable_nonce,
     )]
@@ -695,11 +745,14 @@ pub struct Payback<'info> {
     #[account(
     constraint = nft_mint.supply == 1,
     constraint = nft_mint.decimals == 0,
+    constraint = order.nft_mint == nft_mint.key(),
     )]
     pub nft_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = order.nft_vault == nft_vault.key(),
+    constraint = nft_vault.mint == nft_mint.key(),
     seeds = [nft_mint.key().as_ref(), constants::NFT_PDA_SEED.as_ref()],
     bump = _nft_nonce,
     )]
@@ -726,7 +779,9 @@ pub struct Liquidate<'info> {
     #[account(
     mut,
     has_one = stable_coin_vault,
-    has_one = stable_coin_mint
+    has_one = stable_coin_mint,
+    seeds = [constants::CONFIG_PDA_SEED.as_ref()],
+    bump = config.nonce,
     )]
     pub config: Box<Account<'info, Configuration>>,
 
@@ -734,10 +789,10 @@ pub struct Liquidate<'info> {
     #[account(
     mut,
     constraint = order.stable_coin_vault == stable_coin_vault.key(),
-    has_one = lender,
+    constraint = order.lender == lender.key(),
+    constraint = order.borrower == borrower.key(),
     constraint = order.nft_vault == nft_vault.key(),
     constraint = order.nft_mint == nft_mint.key(),
-    constraint = order.borrower == borrower.key(),
     seeds = [
     _order_id.to_string().as_ref(),
     constants::ORDER_PDA_SEED.as_ref(),
@@ -748,12 +803,14 @@ pub struct Liquidate<'info> {
     pub order: Box<Account<'info, Order>>,
 
     #[account(
-    address = token_constants::USDC_MINT_PUBKEY.parse::< Pubkey > ().unwrap(),
+    constraint = stable_coin_mint.key().as_ref() == config.stable_coin_mint.as_ref(),
     )]
     pub stable_coin_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = stable_coin_vault.key().as_ref() == config.stable_coin_vault.as_ref(),
+    constraint = stable_coin_vault.mint == stable_coin_mint.key(),
     seeds = [stable_coin_mint.key().as_ref(), constants::STABLE_COIN_PDA_SEED.as_ref()],
     bump = _stable_nonce,
     )]
@@ -769,11 +826,14 @@ pub struct Liquidate<'info> {
     #[account(
     constraint = nft_mint.supply == 1,
     constraint = nft_mint.decimals == 0,
+    constraint = order.nft_mint == nft_mint.key(),
     )]
     pub nft_mint: Box<Account<'info, Mint>>,
 
     #[account(
     mut,
+    constraint = order.nft_vault == nft_vault.key(),
+    constraint = nft_vault.mint == nft_mint.key(),
     seeds = [nft_mint.key().as_ref(), constants::NFT_PDA_SEED.as_ref()],
     bump = _nft_nonce,
     )]
@@ -801,6 +861,7 @@ pub struct Liquidate<'info> {
 #[account]
 #[derive(Default)]
 pub struct Configuration {
+    pub owner: Pubkey,
     // Mint of the token
     pub stable_coin_mint: Pubkey,
     // Vault holding the stablecoins -- mostly for holding the collateral stablecoins
@@ -832,6 +893,8 @@ pub struct Order {
     pub interest: u64,
     // payback amoumt
     pub payback_amount: u64,
+    // fee amoumt
+    pub fee_amount: u64,
     // the loan period
     pub period: u64,
     // additional collateral

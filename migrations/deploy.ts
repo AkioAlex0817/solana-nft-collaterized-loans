@@ -21,13 +21,15 @@ module.exports = async function (provider) {
     const NFT_PDA_SEED = "nft";
     const ORDER_PDA_SEED = "order";
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
+    const FEE_VAULT_KEY = '83orEURBiPft6cTE1y3VYr7tDvKJyKUZ13SzHJyvaoCu';
 
-    let initializeSection: boolean = false;
+    let initializeSection: boolean = true;
     let mintSection: boolean = false;
-    let do_test: boolean = true;
+    let do_test: boolean = false;
     //--------------Start Initialize Section----------------
     if (initializeSection) {
         let stableCoinMintPubKey = new anchor.web3.PublicKey(USDC_MINT_KEY);
+        let feeVaultPubkey = new anchor.web3.PublicKey(FEE_VAULT_KEY);
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(CONFIG_PDA_SEED)
@@ -42,6 +44,7 @@ module.exports = async function (provider) {
                 configuration: config,
                 stableCoinMint: stableCoinMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVaultPubkey,
                 systemProgram: anchor.web3.SystemProgram.programId,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -70,9 +73,7 @@ module.exports = async function (provider) {
     }
     //---------------------End Mint Section----------------------
 
-
     //do Test
-
     if(do_test){
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
