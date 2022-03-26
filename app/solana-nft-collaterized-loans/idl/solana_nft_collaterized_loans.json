@@ -58,6 +58,37 @@
       ]
     },
     {
+      "name": "updateConfig",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "configuration",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "stableCoinMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "feeCoinVault",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "configNonce",
+          "type": "u8"
+        }
+      ]
+    },
+    {
       "name": "createOrder",
       "accounts": [
         {
@@ -669,6 +700,11 @@
       "code": 6004,
       "name": "AlreadyLiquidated",
       "msg": "Already liquidated"
+    },
+    {
+      "code": 6005,
+      "name": "PermissionError",
+      "msg": "Invalid action, E5000"
     }
   ],
   "metadata": {

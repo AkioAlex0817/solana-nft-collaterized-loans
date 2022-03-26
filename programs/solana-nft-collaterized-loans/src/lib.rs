@@ -36,6 +36,14 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+    pub fn update_config(ctx: Context<UpdateConfig>, _config_nonce: u8) -> Result<()> {
+        let config = &mut ctx.accounts.configuration;
+        config.owner = ctx.accounts.signer.key();
+        config.fee_coin_vault = ctx.accounts.fee_coin_vault.key();
+        config.nonce = _config_nonce;
+        Ok(())
+    }
+
     pub fn create_order(
         ctx: Context<CreateOrder>,
         _stable_nonce: u8,
@@ -449,7 +457,30 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
     pub rent: Sysvar<'info, Rent>,
+}
 
+#[derive(Accounts)]
+#[instruction(_config_nonce: u8)]
+pub struct UpdateConfig<'info>{
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    #[account(
+    mut,
+    seeds = [constants::CONFIG_PDA_SEED.as_ref()],
+    bump = _config_nonce,
+    constraint = configuration.owner == signer.key() @ErrorCode::PermissionError,
+    )]
+    pub configuration: Box<Account<'info, Configuration>>,
+
+    #[account(
+    address = token_constants::USDC_MINT_PUBKEY.parse::< Pubkey > ().unwrap(),
+    )]
+    pub stable_coin_mint: Box<Account<'info, Mint>>,
+
+    #[account(
+    constraint = fee_coin_vault.mint == stable_coin_mint.key(),
+    )]
+    pub fee_coin_vault: Box<Account<'info, TokenAccount>>,
 }
 
 #[derive(Accounts)]
@@ -929,6 +960,8 @@ pub enum ErrorCode {
     RepaymentPeriodNotExceeded,
     #[msg("Already liquidated")]
     AlreadyLiquidated,
+    #[msg("Invalid action, E5000")]
+    PermissionError,
 }
 
 #[event]

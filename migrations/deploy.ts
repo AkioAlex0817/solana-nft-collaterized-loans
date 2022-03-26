@@ -23,7 +23,8 @@ module.exports = async function (provider) {
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
     const FEE_VAULT_KEY = 'F8z3q8eBkZPzrSMJk5oY5EaKgmfspSnD6kEFuTPERB3E';
 
-    let initializeSection: boolean = true;
+    let initializeSection: boolean = false;
+    let updateSection: boolean = true;
     let mintSection: boolean = false;
     let do_test: boolean = false;
     //--------------Start Initialize Section----------------
@@ -57,6 +58,28 @@ module.exports = async function (provider) {
     }
     //--------------End Initialize Section------------------
 
+    //--------------Start Update Config Section-------------------
+    if (updateSection) {
+        let stableCoinMintPubKey = new anchor.web3.PublicKey(USDC_MINT_KEY);
+        let feeVaultPubkey = new anchor.web3.PublicKey(FEE_VAULT_KEY);
+        const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
+            [
+                Buffer.from(CONFIG_PDA_SEED)
+            ], program.programId);
+        await program.rpc.updateConfig(configBump, {
+            accounts: {
+                signer: provider.wallet.publicKey,
+                configuration: config,
+                stableCoinMint: stableCoinMintPubKey,
+                feeCoinVault: feeVaultPubkey,
+            },
+            signers: [provider.wallet.payer],
+        })
+        const fetch = await program.account.configuration.fetch(config);
+        console.log(fetch);
+    }
+    //--------------End Update Config Section---------------------
+
     //---------------------Start Mint Section----------------------
     // Create NFT Token For Test
     if (mintSection) {
@@ -74,7 +97,7 @@ module.exports = async function (provider) {
     //---------------------End Mint Section----------------------
 
     //do Test
-    if(do_test){
+    if (do_test) {
         const [config, configBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(CONFIG_PDA_SEED)
