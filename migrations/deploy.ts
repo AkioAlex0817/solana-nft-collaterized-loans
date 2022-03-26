@@ -21,7 +21,7 @@ module.exports = async function (provider) {
     const NFT_PDA_SEED = "nft";
     const ORDER_PDA_SEED = "order";
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
-    const FEE_VAULT_KEY = '83orEURBiPft6cTE1y3VYr7tDvKJyKUZ13SzHJyvaoCu';
+    const FEE_VAULT_KEY = 'F8z3q8eBkZPzrSMJk5oY5EaKgmfspSnD6kEFuTPERB3E';
 
     let initializeSection: boolean = true;
     let mintSection: boolean = false;
