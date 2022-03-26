@@ -14,6 +14,7 @@ import {WalletModalProvider} from "@solana/wallet-adapter-react-ui";
 import {createTheme} from "@mui/material";
 import {deepPurple} from "@mui/material/colors";
 import Header from "../components/Header";
+import {SnackbarProvider} from "notistack";
 
 require('@solana/wallet-adapter-react-ui/styles.css');
 
@@ -77,7 +78,9 @@ export default function MyApp(props: MyAppProps) {
                         <WalletProvider wallets={wallets} autoConnect>
                             <WalletModalProvider>
                                 <Header />
-                                <Component {...pageProps} />
+                                <SnackbarProvider maxSnack={5}>
+                                    <Component {...pageProps} />
+                                </SnackbarProvider>
                             </WalletModalProvider>
                         </WalletProvider>
                     </ConnectionProvider>

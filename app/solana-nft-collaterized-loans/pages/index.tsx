@@ -6,12 +6,13 @@ import {useEffect, useState} from "react";
 import {useProgram} from "../utils/usePrograms";
 import * as anchor from "@project-serum/anchor";
 import {cancelOrder, createOrder, getOrders, liquidity, loanOrder, payBack} from "../services/service";
-import {Alert, Button, Card, CardContent, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Grid, Snackbar, Stack, TextField, Typography} from "@mui/material";
+import {Alert, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Grid, Snackbar, Stack, TextField, Typography} from "@mui/material";
 import {Order} from "../src/Models/Order";
 import {styled} from "@mui/material/styles";
 import LoadingButton from "@mui/lab/LoadingButton";
 import * as React from "react";
 import {STABLE_COIN_KEY} from "../utils/consts";
+import {SnackbarProvider, VariantType, useSnackbar} from 'notistack';
 
 //const endpoint = "https://explorer-api.devnet.solana.com";
 const endpoint = "https://api.devnet.solana.com";
@@ -29,27 +30,22 @@ const SpanValueTypography = styled(Typography)({
 });
 
 const Home: NextPage = () => {
+    const {enqueueSnackbar} = useSnackbar();
     const wallet: any = useAnchorWallet();
     const [orders, setOrders] = useState<Order[]>([]);
     const {program} = useProgram({connection, wallet});
     const [lastUpdatedTime, setLastUpdatedTime] = useState<number>();
-    const [loading, setLoading] = React.useState(false);
-
-    //SnackBar
-    const [openSuccess, setOpenSuccess] = React.useState(false);
-    const [openError, setOpenError] = React.useState(false);
-    const [openWarning, setOpenWarning] = React.useState(false);
 
     // Create Order
     const [open, setOpen] = React.useState(false);
     const [nft, setNft] = React.useState('');
-    const [creating, setCreating] = React.useState(false);
+    const [createLoading, setCreateLoading] = React.useState(false);
+    const [cancelLoading, setCancelLoading] = React.useState(false);
+    const [loanLoading, setLoanLoading] = React.useState(false);
+    const [paybackLoading, setPaybackLoading] = React.useState(false);
+    const [liquidityLoading, setLiquidityLoading] = React.useState(false);
 
     const [usdc, setUsdc] = React.useState('--');
-
-    const [successMessage, setSuccessMessage] = React.useState('');
-    const [warningMessage, setWarningMessage] = React.useState('');
-
 
     useEffect(() => {
         fetchOrders();
@@ -80,41 +76,91 @@ const Home: NextPage = () => {
         }
     }
 
-    if (program) {
-        program.addEventListener("CreatedOrderEvent", (event, slot) => {
+    const finishCreating = (borrower: string) => {
+        if (borrower === wallet.publicKey.toString()) {
+            setCreateLoading(false);
+            enqueueSnackbar("Success to create new order!", {variant: 'success'});
             setOrders([]);
             setLastUpdatedTime(Date.now());
-            setSuccessMessage('New Order Created!');
-            setOpenSuccess(true);
+        }
+    }
+
+    const finishCancel = (borrower: string) => {
+        if (borrower === wallet.publicKey.toString()) {
+            setCancelLoading(false);
+            enqueueSnackbar("Success to cancel order!", {variant: 'success'});
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        }
+    }
+
+    const finishLoan = (lender: string, borrower: string) => {
+        if (lender === wallet.publicKey.toString()) {
+            setLoanLoading(false);
+            enqueueSnackbar("Success to cancel order!", {variant: 'success'});
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        }
+        if (borrower === wallet.publicKey.toString()) {
+            enqueueSnackbar("Your order confirmed!", {variant: 'success'});
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        }
+    }
+
+    const finishPayBack = (borrower: string) => {
+        if (borrower === wallet.publicKey.toString()) {
+            setPaybackLoading(false);
+            enqueueSnackbar("PayBack success!", {variant: 'success'});
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        }
+    }
+
+    const finishLiquidity = (borrower: string, lender: string) => {
+        if (lender === wallet.publicKey.toString()) {
+            setLiquidityLoading(false);
+            enqueueSnackbar("Liquidity success!", {variant: 'success'});
+            setOrders([]);
+            setLastUpdatedTime(Date.now());
+        }
+        if (borrower === wallet.publicKey.toString()) {
+            enqueueSnackbar("You order has been liquidated", {variant: 'warning'});
+        }
+    }
+
+    if (program) {
+        program.addEventListener("CreatedOrderEvent", (event, slot) => {
+            finishCreating(event.borrower.toString());
         });
 
         program.addEventListener("CanceledOrderEvent", (event, slot) => {
-            setOrders([]);
-            setLastUpdatedTime(Date.now());
-            setWarningMessage('Order Canceled!');
-            setOpenWarning(true);
+            finishCancel(event.borrower.toString());
         });
 
         program.addEventListener("LoanOrderEvent", (event, slot) => {
-            setOrders([]);
-            setLastUpdatedTime(Date.now());
+            finishLoan(event.lender.toString(), event.borrower.toString());
         });
 
         program.addEventListener("PayBackOrderEvent", (event, slot) => {
-            setOrders([]);
-            setLastUpdatedTime(Date.now());
+            finishPayBack(event.borrower.toString());
         });
 
         program.addEventListener("LiquidityOrderEvent", (event, slot) => {
-            setOrders([]);
-            setLastUpdatedTime(Date.now());
+            finishLiquidity(event.borrower.toString, event.lender.toString());
         })
 
     }
 
     // Create Order Section
     const handleClickOpen = () => {
-        setOpen(true);
+        if (createLoading) {
+            enqueueSnackbar("Please wait until finish other work", {variant: 'error'});
+        } else {
+            setNft("");
+            setOpen(true);
+        }
+
     }
 
     const handleClose = () => {
@@ -127,96 +173,59 @@ const Home: NextPage = () => {
 
     const createOrderHandler = async () => {
         if (!program) return;
-        if (creating || nft == '') return;
-        setCreating(true);
+        if (nft == '') return;
+        setOpen(false);
+        setCreateLoading(true);
         const tx = await createOrder({program, wallet, nftToken: nft});
-        setCreating(false);
-        if (tx) {
-            setSuccessMessage('Order create request sent successfully!');
-            setOpenSuccess(true);
-            setOpen(false);
-            setNft("");
-        } else {
-            setOpenError(true);
+        console.log("Finish Call CreateOrder");
+        if (!tx) {
+            enqueueSnackbar("Failed to create new order", {variant: 'error'});
+            setCreateLoading(false);
         }
     }
     //-------------------------------------------------------
 
-    const handleSuccessClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-        if (reason === 'clickaway') {
-            return;
-        }
-        setOpenSuccess(false);
-    };
-
-    const handleErrorClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-        if (reason === 'clickaway') {
-            return;
-        }
-        setOpenError(false);
-    };
-
-    const handleWarningClose = (event?: React.SyntheticEvent | Event, reason?: string) => {
-        if (reason === 'clickaway') {
-            return;
-        }
-        setOpenWarning(false);
-    };
-
     const cancelOrderHandler = async (item: Order) => {
         if (!program) return;
-        if (loading) return;
-        setLoading(true);
+        if (cancelLoading) return;
+        setCancelLoading(true);
         const tx = await cancelOrder({program, wallet, orderData: item});
-        setLoading(false);
-        if (tx) {
-            orders.splice(orders.findIndex((remove) => remove.orderId == item.orderId), 1);
-            setSuccessMessage("Order remove request sent successfully!");
-            setOpenSuccess(true);
-        } else {
-            setOpenError(true);
+        if (!tx) {
+            enqueueSnackbar("Failed to cancel order", {variant: 'error'});
+            setCancelLoading(false);
         }
     }
 
     const loanHandler = async (item: Order) => {
         if (!program) return;
-        if (loading) return;
-        setLoading(true);
+        if (loanLoading) return;
+        setLoanLoading(true);
         const tx = await loanOrder({program, wallet, orderData: item});
-        setLoading(false);
-        if (tx) {
-            setSuccessMessage("Loan request sent successfully!")
-            setOpenSuccess(true);
-        } else {
-            setOpenError(true);
+        if (!tx) {
+            enqueueSnackbar("Failed to cancel order", {variant: 'error'});
+            setLoanLoading(false);
         }
     }
 
     const payBackHandler = async (item: Order) => {
         if (!program) return;
-        if (loading) return;
-        setLoading(true);
+        if (paybackLoading) return;
+        setPaybackLoading(true);
         const tx = await payBack({program, wallet, orderData: item});
-        setLoading(false);
-        if (tx) {
-            setSuccessMessage("PayBack request sent successfully!")
-            setOpenSuccess(true);
-        } else {
-            setOpenError(true);
+        if (!tx) {
+            enqueueSnackbar("Failed to payback request", {variant: 'error'});
+            setPaybackLoading(false);
         }
     }
 
     const liquidityHandler = async (item: Order) => {
         if (!program) return;
-        if (loading) return;
-        setLoading(true);
+        if (liquidityLoading) return;
+        setLiquidityLoading(true);
         const tx = await liquidity({program, wallet, orderData: item});
-        setLoading(false);
-        if (tx) {
-            setSuccessMessage("Liquidity request sent successfully!")
-            setOpenSuccess(true);
-        } else {
-            setOpenError(true);
+        if (!tx) {
+            enqueueSnackbar("Failed to liquidity request", {variant: 'error'});
+            setPaybackLoading(false);
         }
     }
 
@@ -246,16 +255,6 @@ const Home: NextPage = () => {
                                                     <LabelValueTypography>NFT Token: </LabelValueTypography>
                                                     <SpanValueTypography>{item.nftMint.toBase58()}</SpanValueTypography>
                                                 </Stack>
-                                                {/*<Stack direction={"row"} spacing={4}>
-                                                    <Stack direction={"row"} spacing={2}>
-                                                        <LabelValueTypography>Request Amount: </LabelValueTypography>
-                                                        <SpanValueTypography>{item.requestAmount.toString()} USDC</SpanValueTypography>
-                                                    </Stack>
-                                                    <Stack direction={"row"} spacing={2}>
-                                                        <LabelValueTypography>Interest Amount: </LabelValueTypography>
-                                                        <SpanValueTypography>{item.interest.toString()} USDC</SpanValueTypography>
-                                                    </Stack>
-                                                </Stack>*/}
                                             </Stack>
                                         </Grid>
                                         <Grid item xs={2}>
@@ -263,7 +262,8 @@ const Home: NextPage = () => {
                                                 {item.orderStatus && item.loanStartTime == "0" && item.borrower.toBase58() == wallet.publicKey.toBase58() ?
                                                     <LoadingButton
                                                         variant={"contained"}
-                                                        disabled={loading}
+                                                        size={"small"}
+                                                        disabled={cancelLoading}
                                                         onClick={() => {
                                                             cancelOrderHandler(item);
                                                         }}>
@@ -272,7 +272,7 @@ const Home: NextPage = () => {
                                                 {item.orderStatus && item.loanStartTime == "0" && item.borrower.toBase58() != wallet.publicKey.toBase58() ?
                                                     <LoadingButton
                                                         variant={"contained"}
-                                                        disabled={loading}
+                                                        disabled={loanLoading}
                                                         onClick={() => {
                                                             loanHandler(item);
                                                         }}>
@@ -282,7 +282,7 @@ const Home: NextPage = () => {
                                                 {!item.orderStatus && item.loanStartTime != "0" && item.paidBackAt == "0" && item.withdrewAt == "0" && item.lender.toBase58() == wallet.publicKey.toBase58() ?
                                                     <LoadingButton
                                                         variant={"contained"}
-                                                        disabled={loading}
+                                                        disabled={liquidityLoading}
                                                         onClick={() => {
                                                             liquidityHandler(item);
                                                         }}>
@@ -291,7 +291,7 @@ const Home: NextPage = () => {
                                                 {!item.orderStatus && item.loanStartTime != "0" && item.paidBackAt == "0" && item.withdrewAt == "0" && item.borrower.toBase58() == wallet.publicKey.toBase58() ?
                                                     <LoadingButton
                                                         variant={"contained"}
-                                                        disabled={loading}
+                                                        disabled={paybackLoading}
                                                         onClick={() => {
                                                             payBackHandler(item);
                                                         }}>
@@ -313,25 +313,70 @@ const Home: NextPage = () => {
                     }
                 </Box>
                 : (<div>No Orders</div>) : <div>Your wallet did not connected.</div>}
-
-            <Snackbar open={openSuccess} autoHideDuration={3000} onClose={handleSuccessClose} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
-                <Alert onClose={handleSuccessClose} severity="success" sx={{width: '100%'}}>
-                    {successMessage}
+            <Snackbar open={createLoading} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
+                <Alert icon={false} severity="success" sx={{width: '100%'}}>
+                    <Stack direction={"row"} spacing={2} justifyContent={"start"} alignItems={"center"}>
+                        <CircularProgress size={20}/>
+                        <Typography sx={{fontSize: "15px", color: "green"}}>Creating order</Typography>
+                    </Stack>
                 </Alert>
             </Snackbar>
-            <Snackbar open={openError} autoHideDuration={3000} onClose={handleErrorClose} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
-                <Alert onClose={handleErrorClose} severity="error" sx={{width: '100%'}}>
-                    Error!
+            <Snackbar open={cancelLoading} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
+                <Alert icon={false} severity="success" sx={{width: '100%'}}>
+                    <Stack direction={"row"} spacing={2} justifyContent={"start"} alignItems={"center"}>
+                        <CircularProgress size={20}/>
+                        <Typography sx={{fontSize: "15px", color: "green"}}>Canceling order</Typography>
+                    </Stack>
                 </Alert>
             </Snackbar>
-            <Snackbar open={openWarning} autoHideDuration={3000} onClose={handleWarningClose} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
-                <Alert onClose={handleWarningClose} severity="warning" sx={{width: '100%'}}>
-                    {warningMessage}
+            <Snackbar open={loanLoading} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
+                <Alert icon={false} severity="success" sx={{width: '100%'}}>
+                    <Stack direction={"row"} spacing={2} justifyContent={"start"} alignItems={"center"}>
+                        <CircularProgress size={20}/>
+                        <Typography sx={{fontSize: "15px", color: "green"}}>Start Loaning</Typography>
+                    </Stack>
+                </Alert>
+            </Snackbar>
+            <Snackbar open={paybackLoading} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
+                <Alert icon={false} severity="success" sx={{width: '100%'}}>
+                    <Stack direction={"row"} spacing={2} justifyContent={"start"} alignItems={"center"}>
+                        <CircularProgress size={20}/>
+                        <Typography sx={{fontSize: "15px", color: "green"}}>Pay Back request in progress</Typography>
+                    </Stack>
+                </Alert>
+            </Snackbar>
+            <Snackbar open={liquidityLoading} anchorOrigin={{vertical: 'top', horizontal: 'right'}}>
+                <Alert icon={false} severity="success" sx={{width: '100%'}}>
+                    <Stack direction={"row"} spacing={2} justifyContent={"start"} alignItems={"center"}>
+                        <CircularProgress size={20}/>
+                        <Typography sx={{fontSize: "15px", color: "green"}}>Liquidity request in progress</Typography>
+                    </Stack>
                 </Alert>
             </Snackbar>
             <Dialog open={open}>
                 <DialogTitle>Create Order</DialogTitle>
                 <DialogContent>
+                    <Stack direction={"row"} justifyContent={"space-between"} alignItems={"center"}>
+                        <Typography sx={{fontSize: "15px"}}>NFT</Typography>
+                        <Typography sx={{fontSize: "15px"}}>1</Typography>
+                    </Stack>
+                    <Stack direction={"row"} justifyContent={"space-between"} alignItems={"center"}>
+                        <Typography sx={{fontSize: "15px"}}>NFT Worth</Typography>
+                        <Typography sx={{fontSize: "15px"}}>80 USDC</Typography>
+                    </Stack>
+                    <Stack direction={"row"} justifyContent={"space-between"} alignItems={"center"}>
+                        <Typography sx={{fontSize: "15px"}}>Collaterize(10%)</Typography>
+                        <Typography sx={{fontSize: "15px"}}>8 USDC</Typography>
+                    </Stack>
+                    <Stack direction={"row"} justifyContent={"space-between"} alignItems={"center"}>
+                        <Typography sx={{fontSize: "15px"}}>Service Fee(1%)</Typography>
+                        <Typography sx={{fontSize: "15px"}}>0.8 USDC</Typography>
+                    </Stack>
+                    <Divider sx={{height: "15px"}}/>
+                    <Stack direction={"row"} justifyContent={"space-between"} alignItems={"center"}>
+                        <Typography sx={{fontSize: "15px"}}>Summary</Typography>
+                        <Typography sx={{fontSize: "15px"}}>1 NFT + 8.8 USDC</Typography>
+                    </Stack>
                     <Typography component={"span"} sx={{fontSize: "12px"}}>NFT Token Address</Typography>
                     <TextField
                         margin="dense"
@@ -349,8 +394,8 @@ const Home: NextPage = () => {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <LoadingButton onClick={createOrderHandler} disabled={creating} loading={creating}>Add Order</LoadingButton>
-                    <LoadingButton onClick={handleClose} disabled={creating}>Cancel</LoadingButton>
+                    <LoadingButton onClick={createOrderHandler}>Add Order</LoadingButton>
+                    <LoadingButton onClick={handleClose}>Cancel</LoadingButton>
                 </DialogActions>
             </Dialog>
         </Container>

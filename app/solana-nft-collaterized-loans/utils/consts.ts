@@ -1,4 +1,4 @@
-export const PROGRAM_ID = 'qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn';
+export const PROGRAM_ID = '32XNkUwWhSKsoUEY9dvApXWgMjtssVc9fD1aR1mBfQpe';
 export const STABLE_COIN_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
 
 export const CONFIG_PDA_SEED = "config";
