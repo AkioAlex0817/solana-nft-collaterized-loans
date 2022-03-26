@@ -66,6 +66,7 @@ module.exports = async function (provider) {
             [
                 Buffer.from(CONFIG_PDA_SEED)
             ], program.programId);
+        console.log(config.toString());
         await program.rpc.updateConfig(configBump, {
             accounts: {
                 signer: provider.wallet.publicKey,

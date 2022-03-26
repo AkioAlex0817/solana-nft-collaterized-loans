@@ -9,7 +9,7 @@ pub mod constants {
     pub const ORDER_PDA_SEED: &[u8] = b"order";
 }
 
-declare_id!("qXdGuL6mPUatQNGHRsLZQRyZADm2QKxddhpYz24PaRn");
+declare_id!("32XNkUwWhSKsoUEY9dvApXWgMjtssVc9fD1aR1mBfQpe");
 
 pub mod token_constants {
     // Devnet StableCoin
@@ -41,6 +41,7 @@ pub mod solana_nft_collaterized_loans {
         config.owner = ctx.accounts.signer.key();
         config.fee_coin_vault = ctx.accounts.fee_coin_vault.key();
         config.nonce = _config_nonce;
+
         Ok(())
     }
 
@@ -461,14 +462,15 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 #[instruction(_config_nonce: u8)]
-pub struct UpdateConfig<'info>{
+pub struct UpdateConfig<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
+
     #[account(
     mut,
     seeds = [constants::CONFIG_PDA_SEED.as_ref()],
     bump = _config_nonce,
-    constraint = configuration.owner == signer.key() @ErrorCode::PermissionError,
+    constraint = configuration.owner == signer.key() @ ErrorCode::PermissionError,
     )]
     pub configuration: Box<Account<'info, Configuration>>,
 
