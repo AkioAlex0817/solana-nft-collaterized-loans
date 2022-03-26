@@ -23,8 +23,8 @@ module.exports = async function (provider) {
     const USDC_MINT_KEY = 'Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr';
     const FEE_VAULT_KEY = 'F8z3q8eBkZPzrSMJk5oY5EaKgmfspSnD6kEFuTPERB3E';
 
-    let initializeSection: boolean = false;
-    let updateSection: boolean = true;
+    let initializeSection: boolean = true;
+    let updateSection: boolean = false;
     let mintSection: boolean = false;
     let do_test: boolean = false;
     //--------------Start Initialize Section----------------
