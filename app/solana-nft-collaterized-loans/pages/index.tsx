@@ -13,6 +13,7 @@ import LoadingButton from "@mui/lab/LoadingButton";
 import * as React from "react";
 import {STABLE_COIN_KEY} from "../utils/consts";
 import {SnackbarProvider, VariantType, useSnackbar} from 'notistack';
+import NFTImage from "../components/NFTImage";
 
 //const endpoint = "https://explorer-api.devnet.solana.com";
 const endpoint = "https://api.devnet.solana.com";
@@ -148,8 +149,7 @@ const Home: NextPage = () => {
 
         program.addEventListener("LiquidityOrderEvent", (event, slot) => {
             finishLiquidity(event.borrower.toString, event.lender.toString());
-        })
-
+        });
     }
 
     // Create Order Section
@@ -241,7 +241,10 @@ const Home: NextPage = () => {
                             <Card key={item.orderId.toString()} sx={{marginBottom: "10px", position: "relative"}}>
                                 <CardContent>
                                     <Grid container spacing={2}>
-                                        <Grid item xs={10}>
+                                        <Grid item xs={2}>
+                                            <NFTImage nft={item.nftMint.toString()} program={program}/>
+                                        </Grid>
+                                        <Grid item xs={8}>
                                             <Stack direction={"column"} spacing={2}>
                                                 <Stack direction={"row"} spacing={2}>
                                                     <LabelValueTypography>Order Pubkey: </LabelValueTypography>
