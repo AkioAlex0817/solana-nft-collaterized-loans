@@ -6,7 +6,7 @@ import {Stack} from "@mui/material";
 
 const NFTImage = (props: any) => {
     const {nft, program} = props;
-    const [data, setData] = useState<unknown>(null);
+    const [data, setData] = useState<any>(null);
     const [imageSrc, setImage] = useState(null);
 
 
@@ -33,7 +33,7 @@ const NFTImage = (props: any) => {
 
     return (
         <Stack direction={"row"} justifyContent={"center"} alignItems={"center"}>
-            <img src={imageSrc} alt={data?.name} style={{width: "100px", height: "100px"}}/>
+            <img src={imageSrc ?? ''} alt={data?.name} style={{width: "100px", height: "100px"}}/>
         </Stack>
     );
 }
