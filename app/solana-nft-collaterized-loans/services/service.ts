@@ -13,8 +13,6 @@ type GetOrderProps = {
 export const getOrders = async ({program, filter = []}: GetOrderProps) => {
     let result: Order[] = [];
     let orders = await program.account.order.all();
-    console.log("Get ORders");
-    console.log(orders);
     orders.map((item) => {
         const orderItem: OrderData = {
             borrower: item.account.borrower,
@@ -55,7 +53,7 @@ export const createOrder = async ({program, wallet, nftToken}: CreateOrder) => {
         ], program.programId);
         const configFetch = await program.account.configuration.fetch(config);
         const nftMintPubKey: anchor.web3.PublicKey = new anchor.web3.PublicKey(nftToken);
-        console.log(configFetch.orderId.toString());
+        const feeVaultPubKey: anchor.web3.PublicKey = new anchor.web3.PublicKey(configFetch.feeCoinVault.toString())
         const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(new anchor.BN(configFetch.orderId.toString()).toString()),
@@ -87,6 +85,7 @@ export const createOrder = async ({program, wallet, nftToken}: CreateOrder) => {
                 config: config,
                 stableCoinMint: stableMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVaultPubKey,
                 userStableCoinVault: userUSDC,
                 nftMint: nftMintPubKey,
                 nftVault: nft,
@@ -184,6 +183,8 @@ export const loanOrder = async ({program, wallet, orderData}: LoanOrder) => {
             stableMintPubKey.toBuffer(),
             Buffer.from(STABLE_COIN_PDA_SEED),
         ], program.programId);
+        const configFetch = await program.account.configuration.fetch(config);
+        const feeVaultPubKey: anchor.web3.PublicKey = new anchor.web3.PublicKey(configFetch.feeCoinVault.toString())
         const [order, orderBump] = await anchor.web3.PublicKey.findProgramAddress(
             [
                 Buffer.from(orderData.orderId.toString()),
@@ -211,6 +212,7 @@ export const loanOrder = async ({program, wallet, orderData}: LoanOrder) => {
                 order: order,
                 stableCoinMint: stableMintPubKey,
                 stableCoinVault: stable,
+                feeCoinVault: feeVaultPubKey,
                 lenderStableCoinVault: lenderUSDC,
                 borrowerStableCoinVault: borrowerUSDC,
                 lender: wallet.publicKey,

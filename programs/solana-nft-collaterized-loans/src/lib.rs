@@ -1,3 +1,4 @@
+//! An Solana NFT Collaterized Loans program
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, TokenAccount, Token, Mint};
 use anchor_lang::solana_program::{clock};
@@ -23,6 +24,15 @@ pub mod solana_nft_collaterized_loans {
     use std::time::Duration;
     use super::*;
 
+    /**
+    * ****************************************
+    *
+    * Initialize Program Config
+    * ****************************************
+    */
+    /// upgradeable Initialize
+    /// @param _config_nonce            Program Config Account Address Nonce
+    /// @param _stable_nonce            Program StableCoin Holding Account Address Nonce
     pub fn initialize(ctx: Context<Initialize>, _config_nonce: u8, _stable_nonce: u8) -> Result<()> {
         let config = &mut ctx.accounts.configuration;
         config.owner = ctx.accounts.signer.key();
@@ -36,6 +46,13 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+    /**
+     * ****************************************
+     *
+     * Update Program Config
+     * ****************************************
+     */
+    /// @param _config_nonce            Program Config Account Address
     pub fn update_config(ctx: Context<UpdateConfig>, _config_nonce: u8) -> Result<()> {
         let config = &mut ctx.accounts.configuration;
         config.owner = ctx.accounts.signer.key();
@@ -106,6 +123,16 @@ pub mod solana_nft_collaterized_loans {
         msg!("Name {:?}", metadata_uri.symbol);*/
         Ok(())
     }
+
+    /**
+     * ****************************************
+     *
+     * Create New Order to Loan
+     * ****************************************
+     */
+    /// @param _stable_nonce            Program StableCoin Holding Account Nonce
+    /// @param _nft_nonce               Program Nft Holding Account Nonce
+    /// @param _order_nonce             Program Order Info Account Nonce
 
     pub fn create_order(
         ctx: Context<CreateOrder>,
@@ -195,6 +222,15 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+    /**
+     * ****************************************
+     *
+     * Cancel Order
+     * ****************************************
+     */
+    /// @param _order_id                Order Id to cancel order
+    /// @param _stable_nonce            Program StableCoin Holding Account Nonce
+    /// @param _nft_nonce               Program Nft Holding Account Nonce
     pub fn cancel_order(ctx: Context<CancelOrder>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let config = &mut ctx.accounts.config;
@@ -258,8 +294,11 @@ pub mod solana_nft_collaterized_loans {
             );
             token::transfer(cpi_ctx, order.additional_collateral)?;
         }
+
+        // Save Info
         config.total_additional_collateral -= order.additional_collateral;
 
+        //
         emit!(CanceledOrderEvent {
             order_key: *order.to_account_info().key,
             borrower: *ctx.accounts.borrower.to_account_info().key,
@@ -268,6 +307,14 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+    /**
+     * ****************************************
+     *
+     * Start loan
+     * ****************************************
+     */
+    /// @param _order_id                Order Id to start loan
+    /// @param _stable_nonce            Program StableCoin Holding Account Nonce
     pub fn give_loan(ctx: Context<GiveLoan>, _order_id: u64, _stable_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         if order.loan_start_time != 0 && order.order_status == false {
@@ -313,6 +360,15 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+    /**
+     * ****************************************
+     *
+     * Payback to return NFT
+     * ****************************************
+     */
+    /// @param _order_id                Order Id to payback
+    /// @param _stable_nonce            Program StableCoin Holding Account Nonce
+    /// @param _nft_nonce               Program NFT Holding Account Nonce
     pub fn payback(ctx: Context<Payback>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let config = &mut ctx.accounts.config;
@@ -393,6 +449,8 @@ pub mod solana_nft_collaterized_loans {
             );
             token::transfer(cpi_ctx, order.additional_collateral)?;
         }
+
+        //Save Info
         config.total_additional_collateral -= order.additional_collateral;
 
         emit!(PayBackOrderEvent {
@@ -403,19 +461,31 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+    /**
+     * ****************************************
+     *
+     * Liquidity Loan Order
+     * ****************************************
+     */
+    /// @param _order_id                Order Id to liquidity
+    /// @param _stable_nonce            Program StableCoin Holding Account Nonce
+    /// @param _nft_nonce               Program NFT Holding Account Nonce
     pub fn liquidate(ctx: Context<Liquidate>, _order_id: u64, _stable_nonce: u8, _nft_nonce: u8) -> Result<()> {
         let order = &mut ctx.accounts.order;
         let config = &mut ctx.accounts.config;
 
+        // Validate order status to liquidity
         if order.loan_start_time == 0 && order.order_status == true {
             return Err(ErrorCode::LoanNotProvided.into());
         }
 
+        // Check expire time
         let clock = clock::Clock::get().unwrap();
         if order.loan_start_time.checked_add(order.period).unwrap() > clock.unix_timestamp as u64 {
             //return Err(ErrorCode::RepaymentPeriodNotExceeded.into());
         }
 
+        // Check duplicate action
         if order.withdrew_at != 0 {
             return Err(ErrorCode::AlreadyLiquidated.into());
         }
@@ -473,6 +543,8 @@ pub mod solana_nft_collaterized_loans {
             );
             token::transfer(cpi_ctx, order.additional_collateral)?;
         }
+
+        //Save Info
         config.total_additional_collateral -= order.additional_collateral;
 
         emit!(LiquidityOrderEvent {
@@ -957,58 +1029,58 @@ pub struct Liquidate<'info> {
 #[derive(Default)]
 pub struct Configuration {
     pub owner: Pubkey,
-    // Mint of the token
+    /// Mint of the token
     pub stable_coin_mint: Pubkey,
-    // Vault holding the stablecoins -- mostly for holding the collateral stablecoins
+    /// Vault holding the stablecoins -- mostly for holding the collateral stablecoins
     pub stable_coin_vault: Pubkey,
-
+    /// Vault fee the stablecoins -- mostly for receive the service fee
     pub fee_coin_vault: Pubkey,
-    // latest order id
+    /// latest order id
     pub order_id: u64,
-    // total additional collateral
+    /// total additional collateral
     pub total_additional_collateral: u64,
-    // nonce
+    /// nonce
     pub nonce: u8,
 }
 
 #[account]
 #[derive(Default)]
 pub struct Order {
-    // person requesting the loan
+    /// person requesting the loan
     pub borrower: Pubkey,
     /// vault to send the loan
     pub stable_coin_vault: Pubkey,
-    // mint of the nft
+    /// mint of the nft
     pub nft_mint: Pubkey,
     /// collateral vault holding the nft
     pub nft_vault: Pubkey,
-    // request amount
+    /// request amount
     pub request_amount: u64,
-    // interest amount
+    /// interest amount
     pub interest: u64,
-    // payback amoumt
+    /// payback amoumt
     pub payback_amount: u64,
-    // fee amoumt
+    /// fee amoumt
     pub fee_amount: u64,
-    // the loan period
+    /// the loan period
     pub period: u64,
-    // additional collateral
+    /// additional collateral
     pub additional_collateral: u64,
-    // lender
+    /// lender
     pub lender: Pubkey,
-    // order created at
+    /// order created at
     pub created_at: u64,
-    // loan start time
+    /// loan start time
     pub loan_start_time: u64,
-    // repayment timestamp
+    /// repayment timestamp
     pub paid_back_at: u64,
-    // time the lender liquidated the loan & withdrew the collateral
+    /// time the lender liquidated the loan & withdrew the collateral
     pub withdrew_at: u64,
-    // status of the order
+    /// status of the order
     pub order_status: bool,
-
+    /// order id
     pub order_id: u64,
-    // nonce
+    /// nonce
     pub nonce: u8,
 }
 
@@ -1029,31 +1101,38 @@ pub enum ErrorCode {
     PermissionError,
 }
 
+/**
+* **************************************
+* Notice from Function
+* **************************************
+*/
+/// @notice Create Order Function
 #[event]
 pub struct CreatedOrderEvent {
     pub order_key: Pubkey,
     pub borrower: Pubkey,
 }
 
+/// @notice Canceled Order Function
 #[event]
 pub struct CanceledOrderEvent {
     pub order_key: Pubkey,
     pub borrower: Pubkey,
 }
-
+/// @notice Loan Order Function
 #[event]
 pub struct LoanOrderEvent {
     pub order_key: Pubkey,
     pub borrower: Pubkey,
     pub lender: Pubkey,
 }
-
+/// @notice Payback Order Function
 #[event]
 pub struct PayBackOrderEvent {
     pub order_key: Pubkey,
     pub borrower: Pubkey,
 }
-
+/// @notice Liquidity Order Function
 #[event]
 pub struct LiquidityOrderEvent {
     pub order_key: Pubkey,
