@@ -45,6 +45,68 @@ pub mod solana_nft_collaterized_loans {
         Ok(())
     }
 
+
+    #[derive(Accounts)]
+    pub struct Test<'info> {
+        #[account(
+        constraint = nft_mint1.supply == 1,
+        constraint = nft_mint1.decimals == 0,
+        )]
+        pub nft_mint1: Box<Account<'info, Mint>>,
+
+        #[account(
+        constraint = nft_mint2.supply == 1,
+        constraint = nft_mint2.decimals == 0,
+        )]
+        pub nft_mint2: Box<Account<'info, Mint>>,
+
+        #[account(mut)]
+        pub signer: Signer<'info>,
+
+        #[account()]
+        /// CHECK: For MetaInfo
+        pub meta_info1: AccountInfo<'info>,
+        // misc
+        pub system_program: Program<'info, System>,
+        pub token_program: Program<'info, Token>,
+
+        pub rent: Sysvar<'info, Rent>,
+    }
+
+    pub fn test(ctx: Context<Test>, _order_id: u64) -> Result<()> {
+        msg!("Mint Account1 {:?}", &ctx.accounts.nft_mint1.key());
+        msg!("Mint Account2 {:?}", &ctx.accounts.nft_mint2.key());
+        let (metadata_address1, _) = Pubkey::find_program_address(
+            &["metadata".as_bytes(),
+                &spl_token_metadata::ID.to_bytes(),
+                &ctx.accounts.nft_mint1.key().to_bytes()],
+            &spl_token_metadata::ID);
+        msg!("Mint MetaData Address1 {:?}", metadata_address1);
+        let (metadata_address2, _) = Pubkey::find_program_address(
+            &["metadata".as_bytes(),
+                &spl_token_metadata::ID.to_bytes(),
+                &ctx.accounts.nft_mint2.key().to_bytes()],
+            &spl_token_metadata::ID);
+        msg!("Mint MetaData Address2 {:?}", metadata_address2);
+        let metadata = spl_token_metadata::state::Metadata::from_account_info(ctx.accounts.meta_info1.as_ref())?;
+
+        let creators = metadata.data.creators.unwrap();
+        let cndy = creators.first().unwrap();
+        msg!("Creator {:?}", cndy.address);
+
+        /*let body = reqwest::get("https://www.rust-lang.org")
+            .await?
+            .text()
+            .await?;
+
+        msg!("body = {:?}", body);*/
+        /*let response = reqwest::get(metadata.data.uri).await?;
+        let metadata_uri : MetaDataURI = response.json().await?;
+        msg!("Name {:?}", metadata_uri.name);
+        msg!("Name {:?}", metadata_uri.symbol);*/
+        Ok(())
+    }
+
     pub fn create_order(
         ctx: Context<CreateOrder>,
         _stable_nonce: u8,
@@ -949,6 +1011,7 @@ pub struct Order {
     // nonce
     pub nonce: u8,
 }
+
 
 #[error_code]
 pub enum ErrorCode {
